@@ -99,7 +99,7 @@ func layout(w io.Writer, d Doc) error {
 		}
 		return layout(w, d.d)
 	case lineX:
-		_, err := w.Write(append([]byte{'\n'}, bytes.Repeat([]byte{' '}, d.i)...))
+		_, err := w.Write(append([]byte{'\n'}, bytes.Repeat([]byte("      "), d.i)...))
 		if err != nil {
 			return err
 		}
