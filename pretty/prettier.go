@@ -110,10 +110,12 @@ func Fold(f func(a, b Doc) Doc, d ...Doc) Doc {
 }
 
 func Bracket(l string, x Doc, r string) Doc {
+	// The unions with Text("") (instead of just Line) prevent a space being
+	// printed when lines are concatenated.
 	return Group(Fold(Concat,
 		Text(l),
-		Nest(2, Concat(Line, x)),
-		Line,
+		Nest(2, Concat(union{Text(""), Line}, x)),
+		union{Text(""), Line},
 		Text(r),
 	))
 }
