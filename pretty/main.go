@@ -55,20 +55,24 @@ func be(w, k int, x ...IDoc) Doc {
 			d: be(w, d.i, z...),
 		}
 	} else if t, ok := d.d.(union); ok {
+		n := append([]IDoc{{d.i, t.a}}, z...)
 		return better(w, k,
-			be(w, k, append([]IDoc{{d.i, t.a}}, z...)...),
-			be(w, k, append([]IDoc{{d.i, t.b}}, z...)...),
+			be(w, k, n...),
+			func() Doc {
+				n[0].d = t.b
+				return be(w, k, n...)
+			},
 		)
 	} else {
 		panic(fmt.Errorf("unknown type: %T", d.d))
 	}
 }
 
-func better(w, k int, x, y Doc) Doc {
+func better(w, k int, x Doc, y func() Doc) Doc {
 	if fits(w-k, x) {
 		return x
 	}
-	return y
+	return y()
 }
 
 func fits(w int, x Doc) bool {
