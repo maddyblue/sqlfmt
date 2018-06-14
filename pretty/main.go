@@ -2,25 +2,31 @@ package pretty
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"strings"
 )
 
-func Pretty(d Doc, w io.Writer, n int) error {
-	b := best(n, 0, d)
+func Pretty(ctx context.Context, d Doc, w io.Writer, n int) error {
+	b := best(ctx, n, 0, d)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
 	return layout(w, b)
 }
 
-func PrettyString(d Doc, n int) (string, error) {
+func PrettyString(ctx context.Context, d Doc, n int) (string, error) {
 	var sb strings.Builder
-	err := Pretty(d, &sb, n)
+	err := Pretty(ctx, d, &sb, n)
 	return sb.String(), err
 }
 
 // w is the max line width, k is the current col.
-func best(w, k int, x Doc) Doc {
-	return be(w, k, IDoc{0, x})
+func best(ctx context.Context, w, k int, x Doc) Doc {
+	return be(ctx.Done(), w, k, IDoc{0, x})
 }
 
 type IDoc struct {
@@ -28,39 +34,44 @@ type IDoc struct {
 	d Doc
 }
 
-func be(w, k int, x ...IDoc) Doc {
+func be(done <-chan struct{}, w, k int, x ...IDoc) Doc {
+	select {
+	case <-done:
+		return Nil
+	default:
+	}
 	if len(x) == 0 {
 		return Nil
 	}
 	d := x[0]
 	z := x[1:]
 	if d.d == Nil {
-		return be(w, k, z...)
+		return be(done, w, k, z...)
 	} else if t, ok := d.d.(concat); ok {
-		return be(w, k, append([]IDoc{{d.i, t.a}, {d.i, t.b}}, z...)...)
+		return be(done, w, k, append([]IDoc{{d.i, t.a}, {d.i, t.b}}, z...)...)
 	} else if t, ok := d.d.(nest); ok {
 		x[0] = IDoc{
 			d: t.d,
 			i: d.i + t.n,
 		}
-		return be(w, k, x...)
+		return be(done, w, k, x...)
 	} else if t, ok := d.d.(text); ok {
 		return textX{
 			s: string(t),
-			d: be(w, k+len(t), z...),
+			d: be(done, w, k+len(t), z...),
 		}
 	} else if d.d == Line {
 		return lineX{
 			i: d.i,
-			d: be(w, d.i, z...),
+			d: be(done, w, d.i, z...),
 		}
 	} else if t, ok := d.d.(union); ok {
 		n := append([]IDoc{{d.i, t.a}}, z...)
 		return better(w, k,
-			be(w, k, n...),
+			be(done, w, k, n...),
 			func() Doc {
 				n[0].d = t.b
-				return be(w, k, n...)
+				return be(done, w, k, n...)
 			},
 		)
 	} else {
