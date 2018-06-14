@@ -112,8 +112,7 @@ func Fold(f func(a, b Doc) Doc, d ...Doc) Doc {
 func Bracket(l string, x Doc, r string) Doc {
 	return Group(Fold(Concat,
 		Text(l),
-		Nest(2, Concat(Line, x)),
-		Line,
+		Nest(0, x),
 		Text(r),
 	))
 }
