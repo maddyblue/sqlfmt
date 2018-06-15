@@ -27,7 +27,9 @@ func TestPrettier(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, m := range matches {
+		m := m
 		t.Run(m, func(t *testing.T) {
+			t.Parallel()
 			sql, err := ioutil.ReadFile(m)
 			if err != nil {
 				t.Fatal(err)
