@@ -6,7 +6,7 @@ SELECT
     (
       1
     )
- );
+ )
 
 6:
 ------
@@ -15,7 +15,7 @@ SELECT
    SELECT
     (1
     )
- );
+ )
 
 7:
 -------
@@ -23,26 +23,26 @@ SELECT
  (
    SELECT
     (1)
- );
+ )
 
 8:
 --------
 SELECT
  (SELECT
     (1)
- );
+ )
 
 12:
 ------------
 SELECT
  (SELECT (1)
- );
+ )
 
 13:
 -------------
 SELECT
- (SELECT (1));
+ (SELECT (1))
 
 19:
 -------------------
-SELECT (SELECT (1));
+SELECT (SELECT (1))

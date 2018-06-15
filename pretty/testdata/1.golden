@@ -1,8 +1,8 @@
 1:
 -
 SELECT
- 1;
+ 1
 
 8:
 --------
-SELECT 1;
+SELECT 1

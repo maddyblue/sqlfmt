@@ -73,7 +73,7 @@ func TestPrettier(t *testing.T) {
 			var sb strings.Builder
 			for i, s := range res {
 				if i == 0 || s != res[i-1] {
-					fmt.Fprintf(&sb, "%d:\n%s\n%s;\n\n", i+1, strings.Repeat("-", i+1), s)
+					fmt.Fprintf(&sb, "%d:\n%s\n%s\n\n", i+1, strings.Repeat("-", i+1), s)
 				}
 			}
 			got := strings.TrimSpace(sb.String())
