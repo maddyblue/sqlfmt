@@ -12,8 +12,8 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/util/pretty"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/mjibson/sqlfmt/pretty"
 )
 
 type Specification struct {
