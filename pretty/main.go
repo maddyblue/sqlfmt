@@ -26,7 +26,12 @@ func PrettyString(ctx context.Context, d Doc, n int) (string, error) {
 
 // w is the max line width, k is the current col.
 func best(ctx context.Context, w, k int, x Doc) Doc {
-	return be(ctx.Done(), w, k, IDoc{0, x})
+	b := beExec{
+		w:     w,
+		done:  ctx.Done(),
+		cache: make(map[string]Doc),
+	}
+	return b.be(k, IDoc{0, x})
 }
 
 type IDoc struct {
@@ -34,9 +39,19 @@ type IDoc struct {
 	d Doc
 }
 
-func be(done <-chan struct{}, w, k int, x ...IDoc) Doc {
+func (i IDoc) String() string {
+	return fmt.Sprintf("{%d: %s}", i.i, i.d)
+}
+
+type beExec struct {
+	w     int
+	done  <-chan struct{}
+	cache map[string]Doc
+}
+
+func (b beExec) be(k int, x ...IDoc) Doc {
 	select {
-	case <-done:
+	case <-b.done:
 		return Nil
 	default:
 	}
@@ -46,37 +61,55 @@ func be(done <-chan struct{}, w, k int, x ...IDoc) Doc {
 	d := x[0]
 	z := x[1:]
 	if d.d == Nil {
-		return be(done, w, k, z...)
-	} else if t, ok := d.d.(concat); ok {
-		return be(done, w, k, append([]IDoc{{d.i, t.a}, {d.i, t.b}}, z...)...)
-	} else if t, ok := d.d.(nest); ok {
+		return b.be(k, z...)
+	}
+	if t, ok := d.d.(concat); ok {
+		return b.be(k, append([]IDoc{{d.i, t.a}, {d.i, t.b}}, z...)...)
+	}
+	if t, ok := d.d.(nest); ok {
 		x[0] = IDoc{
 			d: t.d,
 			i: d.i + t.n,
 		}
-		return be(done, w, k, x...)
-	} else if t, ok := d.d.(text); ok {
+		return b.be(k, x...)
+	}
+	if t, ok := d.d.(text); ok {
 		return textX{
 			s: string(t),
-			d: be(done, w, k+len(t), z...),
+			d: b.be(k+len(t), z...),
 		}
-	} else if d.d == Line {
+	}
+	if d.d == Line {
 		return lineX{
 			i: d.i,
-			d: be(done, w, d.i, z...),
+			d: b.be(d.i, z...),
 		}
-	} else if t, ok := d.d.(union); ok {
-		n := append([]IDoc{{d.i, t.a}}, z...)
-		return better(w, k,
-			be(done, w, k, n...),
-			func() Doc {
-				n[0].d = t.b
-				return be(done, w, k, n...)
-			},
-		)
-	} else {
+	}
+	t, ok := d.d.(union)
+	if !ok {
 		panic(fmt.Errorf("unknown type: %T", d.d))
 	}
+
+	var sb strings.Builder
+	for _, xd := range x {
+		sb.WriteString(xd.String())
+	}
+	s := sb.String()
+	cached, ok := b.cache[s]
+	if ok {
+		return cached
+	}
+
+	n := append([]IDoc{{d.i, t.a}}, z...)
+	res := better(b.w, k,
+		b.be(k, n...),
+		func() Doc {
+			n[0].d = t.b
+			return b.be(k, n...)
+		},
+	)
+	b.cache[s] = res
+	return res
 }
 
 func better(w, k int, x Doc, y func() Doc) Doc {

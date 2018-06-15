@@ -7,6 +7,7 @@ import "fmt"
 
 type Doc interface {
 	isDoc()
+	String() string
 }
 
 func (concat) isDoc() {}
@@ -17,6 +18,15 @@ func (_nil) isDoc()   {}
 func (line) isDoc()   {}
 func (textX) isDoc()  {}
 func (lineX) isDoc()  {}
+
+func (d text) String() string   { return fmt.Sprintf("(%q)", string(d)) }
+func (line) String() string     { return "LINE" }
+func (_nil) String() string     { return "NIL" }
+func (d concat) String() string { return fmt.Sprintf("(%s <> %s)", d.a, d.b) }
+func (d nest) String() string   { return fmt.Sprintf("(NEST %d %s)", d.n, d.d) }
+func (d union) String() string  { return fmt.Sprintf("(%s :<|> %s)", d.a, d.b) }
+func (d textX) String() string  { return fmt.Sprintf("(%s TEXTX %s)", d.s, d.d) }
+func (d lineX) String() string  { return fmt.Sprintf("(%d LINEX %s)", d.i, d.d) }
 
 type group Doc
 
