@@ -124,7 +124,7 @@ func Bracket(l string, x Doc, r string) Doc {
 	// printed when lines are concatenated.
 	return Group(Fold(Concat,
 		Text(l),
-		Nest(2, Concat(union{Text(""), Line}, x)),
+		Nest(1, Concat(union{Text(""), Line}, x)),
 		union{Text(""), Line},
 		Text(r),
 	))

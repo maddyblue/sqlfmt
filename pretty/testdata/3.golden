@@ -2,34 +2,34 @@
 -
 SELECT
  (
-   SELECT
-    (
-      1
-    )
+  SELECT
+   (
+    1
+   )
+ )
+
+5:
+-----
+SELECT
+ (
+  SELECT
+   (1
+   )
  )
 
 6:
 ------
 SELECT
  (
-   SELECT
-    (1
-    )
- )
-
-7:
--------
-SELECT
- (
-   SELECT
-    (1)
+  SELECT
+   (1)
  )
 
 8:
 --------
 SELECT
  (SELECT
-    (1)
+   (1)
  )
 
 12:
