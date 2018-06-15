@@ -98,14 +98,23 @@ func ConcatLine(a, b Doc) Doc {
 	)
 }
 
-func JoinGroup(name, divider string, d ...Doc) Doc {
+// Stack concats documents with a Line between each.
+func Stack(d ...Doc) Doc {
+	return Fold(ConcatLine, d...)
+}
+
+func JoinGroupDoc(name Doc, divider string, d ...Doc) Doc {
 	return Group(Concat(
-		Text(name),
+		name,
 		Nest(1, Concat(
 			Line,
 			Group(Join(divider, d...)),
 		)),
 	))
+}
+
+func JoinGroup(name, divider string, d ...Doc) Doc {
+	return JoinGroupDoc(Text(name), divider, d...)
 }
 
 func Fold(f func(a, b Doc) Doc, d ...Doc) Doc {
