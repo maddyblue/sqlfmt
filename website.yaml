@@ -1,8 +1,9 @@
 apiVersion: apps/v1beta1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: sqlfmt
 spec:
+  serviceName: "sqlfmt"
   replicas: 1
   template:
     metadata:
@@ -14,10 +15,33 @@ spec:
         image: gcr.io/hots-cockroach/sqlfmt:latest
         imagePullPolicy: Always
         env:
-          - name: ADDR
+          - name: SQLFMT_ADDR
+            value: ":443"
+          - name: SQLFMT_AUTOCERT
+            value: "sqlfmt.mattjibson.com,sqlfum.pt"
+          - name: SQLFMT_CACHE
+            value: "/datadir/cache"
+          - name: SQLFMT_REDIR
             value: ":80"
         ports:
         - containerPort: 80
+        - containerPort: 443
+        volumeMounts:
+        - name: datadir
+          mountPath: /datadir
+      volumes:
+      - name: datadir
+        persistentVolumeClaim:
+          claimName: datadir
+  volumeClaimTemplates:
+  - metadata:
+      name: datadir
+    spec:
+      accessModes:
+        - "ReadWriteOnce"
+      resources:
+        requests:
+          storage: 0.1Gi
 ---
 apiVersion: v1
 kind: Service
@@ -27,7 +51,14 @@ spec:
   selector:
     app: sqlfmt
   ports:
+  - port: 443
+    targetPort: 443
+    name: https
+  - port: 80
+    targetPort: 80
+    name: http
   - port: 7648
     targetPort: 80
+    name: legacy
   type: LoadBalancer
-  loadBalancerIP: "35.226.2.104"
+  loadBalancerIP: "35.192.121.40"

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,10 +15,17 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/util/pretty"
 	"github.com/kelseyhightower/envconfig"
+	"golang.org/x/crypto/acme/autocert"
+
+	// Initialize the builtins.
+	_ "github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
 )
 
 type Specification struct {
-	Addr string
+	Addr     string
+	Redir    string
+	Autocert []string
+	Cache    string
 }
 
 func main() {
@@ -26,21 +34,42 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	fmt.Printf("SPEC: %#v\n", spec)
 	if spec.Addr == "" {
 		spec.Addr = ":80"
 	}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(Index))
 	})
-	http.HandleFunc("/fmt", wrap(Fmt))
+	mux.HandleFunc("/fmt", wrap(Fmt))
 	srv := &http.Server{
-		Addr: spec.Addr,
+		Addr:    spec.Addr,
+		Handler: mux,
 	}
-	go func() {
-		fmt.Printf("listening on http://%s\n", spec.Addr)
-		log.Fatal(srv.ListenAndServe())
-	}()
+
+	if len(spec.Autocert) > 0 {
+		m := autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(spec.Autocert...),
+			Cache:      autocert.DirCache(spec.Cache),
+		}
+		tlsConfig := &tls.Config{GetCertificate: m.GetCertificate}
+		go func() {
+			log.Fatal(http.ListenAndServe(spec.Redir, m.HTTPHandler(nil)))
+		}()
+		srv.TLSConfig = tlsConfig
+		go func() {
+			log.Fatal(srv.ListenAndServeTLS("", ""))
+		}()
+	} else {
+		go func() {
+			fmt.Println("HTTP listen on addr:", spec.Addr)
+			log.Fatal(srv.ListenAndServe())
+		}()
+	}
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c)
 	<-c
@@ -97,7 +126,8 @@ const Index = `<!DOCTYPE html>
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<title>sqlfmt</title>
+<link href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4gYRBwgDpCIYRAAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAACiElEQVRYw+2XPWsyQRDHfX8Dq1iILyBBVDSVoFiLWogWJpAikkpiISJim0+gIgh+hBRBEBFCwEIURYQU6bS0CBYRJeALRBKCE3bhFu8xnt4ZnmsysLfc/2aOn3uzM6sAeDYBujw9PUE4HAaDwQBSqRSMRiNcX19Dp9PZClitVnB7ewsmkwlkMhme0T3SaS8WCMhgBKhWqyASiWgBTMGhUOhHP/QDOAGcnZ0Rx3w+D+/v7zAcDiEWi20FPzw8EN/z83NYLBZ4prTHx0f2AHK5nDgOBgPaw1wuR7u/uroivq1WC2vNZpNo0WiUPYDVaiWOTqcTGo0GrNfrH50tFgvxHY/HWHt9fSWazWZjD3B/fw9CoZAWgJKxUCjgz7FpKpWK+Hx+fmLt4+ODaGq1mj0AurTbbfB6vVsgaEWm0ylx3kxWapXQTGkSiYQbAGUvLy+QzWZBo9GQ4Hg8fvAKnJycHAdAWbfbJcFarZboZrOZMQccDgd7gFQqBV9fXzQRbS8qGBUbyi4vLxl3QSKRYA9AfetarQaz2Qze3t4gnU6TYLvdTpwrlQrRLy4utupAr9fjBrBroKQsl8vEGSUcStaffJPJ5M5KyFRlBYj65uYGUD1QKBS4F+h0OohEInh5/7XlcgmZTAb0ej3ZFaenpzCfz7kBHNPJUANyu92kCI1GI27d8BhDu8DlcsHd3R33dsz7eYBXgEOTZTOxgsEg7SV+v3+n794k5AKAav5kMsEaqohisfh3AA5YLjJKpRLWisXi3qLD9JwzgMfjwRq1Df87gFKphHq9jovXrwHsO5Ru6oFAAHdKn8/HDwA6MaEZnR94+QT9fh/Pz8/P/ACw+Q/wB/AHwAjAdzf8BhzwU5PzE5t1AAAAAElFTkSuQmCC" rel="icon" type="image/png">
+<title>sequel  fumpt</title>
 <style>
 body {
 	max-width: 38rem;
@@ -114,7 +144,7 @@ input {
 </style>
 </head>
 <body>
-<h1>sqlfmt</h1>
+<h1>sequel  fumpt</h1>
 <p>Type some SQL into the box (multiple statements supported). Move the slider to adjust the desired max-width of the output. Partial SQL support only. <a href="https://github.com/mjibson/sqlfmt">code</a></p>
 <textarea id="sql" style="width: 100%; height: 150px" onChange="range()" onInput="range()">SELECT count(*) count, winner, counter * 60 * 5 as counter FROM (SELECT winner, round(length / 60 / 5) as counter FROM players WHERE build = $1 AND (hero = $2 OR region = $3)) GROUP BY winner, counter</textarea>
 <br><input type="range" min="1" max="200" step="1" name="n" value="40" onChange="range()" onInput="range()" id="n" style="width: 100%">
@@ -123,10 +153,12 @@ input {
 <pre id="width" style="position: absolute; visibility: hidden; height: auto; width: auto;">_</pre>
 <script>
 // Some hax to make the slider position the same width as the displayed text.
+/* Disabled because with constrained scren width it's annoying.
 const width = document.getElementById('width').clientWidth;
 const n = document.getElementById('n');
 const fmt = document.getElementById("fmt");
 n.max = n.clientWidth / width;
+*/
 
 let working = false;
 let pending = false;
