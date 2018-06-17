@@ -98,18 +98,35 @@ const Index = `<!DOCTYPE html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>sqlfmt</title>
+<style>
+body {
+	max-width: 38rem;
+	margin-left: auto;
+	margin-right: auto;
+	color: #303030;
+	font-size: 16px;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+input {
+	margin: 0;
+	padding: 0;
+}
+</style>
 </head>
 <body>
+<h1>sqlfmt</h1>
 <p>Type some SQL into the box (multiple statements supported). Move the slider to adjust the desired max-width of the output. Partial SQL support only. <a href="https://github.com/mjibson/sqlfmt">code</a></p>
-<textarea id="sql" style="width: 100%; max-width: 600px; height: 150px" onChange="range()" onInput="range()">SELECT count(*) count, winner, counter * 60 * 5 as counter FROM (SELECT winner, round(length / 60 / 5) as counter FROM players WHERE build = $1 AND (hero = $2 OR region = $3)) GROUP BY winner, counter</textarea>
-<br><input type="range" min="1" max="200" step="1" name="n" value="20" onChange="range()" onInput="range()" id="n" style="width: 100%">
+<textarea id="sql" style="width: 100%; height: 150px" onChange="range()" onInput="range()">SELECT count(*) count, winner, counter * 60 * 5 as counter FROM (SELECT winner, round(length / 60 / 5) as counter FROM players WHERE build = $1 AND (hero = $2 OR region = $3)) GROUP BY winner, counter</textarea>
+<br><input type="range" min="1" max="200" step="1" name="n" value="40" onChange="range()" onInput="range()" id="n" style="width: 100%">
 <br>width: <span id="nval"></span>
 <br><pre id="fmt"></pre>
 <pre id="width" style="position: absolute; visibility: hidden; height: auto; width: auto;">_</pre>
 <script>
 // Some hax to make the slider position the same width as the displayed text.
 const width = document.getElementById('width').clientWidth;
-document.getElementById('n').max = window.innerWidth / width;
+const n = document.getElementById('n');
+const fmt = document.getElementById("fmt");
+n.max = n.clientWidth / width;
 
 let working = false;
 let pending = false;
@@ -119,15 +136,14 @@ function range() {
 		return;
 	}
 	working = true;
-	const n = document.getElementById("n").value;
-	document.getElementById("nval").innerText = n;
+	const v = n.value;
+	document.getElementById("nval").innerText = v;
 	const sql = document.getElementById("sql").value;
-	fetch('/fmt?n=' + n + '&sql=' + encodeURIComponent(sql))
+	fetch('/fmt?n=' + v + '&sql=' + encodeURIComponent(sql))
 	.then(resp => {
 		working = false;
 		resp.json().then(data => {
-			const fmt = document.getElementById("fmt");
-			fmt.innerText = data.map(d => d + ';').join('\n\n') + '\n\n' + '#'.repeat(n);
+			fmt.innerText = data.map(d => d + ';').join('\n\n');
 			if (pending) {
 				range();
 				pending = false;
