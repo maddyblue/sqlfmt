@@ -160,6 +160,7 @@ const width = document.getElementById('width');
 const actual = document.getElementById('actual_width');
 const n = document.getElementById('n');
 const fmt = document.getElementById('fmt');
+const sqlEl = document.getElementById('sql');
 
 document.getElementById('copy').addEventListener('click', ev => {
 	copyTextToClipboard(fmt.innerText);
@@ -222,7 +223,9 @@ function range() {
 	working = true;
 	const v = n.value;
 	document.getElementById('nval').innerText = v;
-	const sql = document.getElementById('sql').value;
+	const sql = sqlEl.value;
+	localStorage.setItem('sql', sql);
+	localStorage.setItem('n', v);
 	fetch('/fmt?n=' + v + '&sql=' + encodeURIComponent(sql)).then(
 		resp => {
 			working = false;
@@ -247,8 +250,6 @@ function range() {
 	);
 }
 
-range();
-
 document.addEventListener('keydown', e => {
 	const code = e.keyCode;
 	let n = document.getElementById('n');
@@ -263,6 +264,19 @@ document.addEventListener('keydown', e => {
 			break;
 	}
 });
+
+(() => {
+	const sql = localStorage.getItem('sql');
+	const nVal = localStorage.getItem('n');
+	if (sql !== null && sql != '') {
+		sqlEl.innerText = sql;
+	}
+	if (nVal !== null && nVal > 0) {
+		n.value = nVal;
+	}
+})();
+
+range();
 </script>
 </body>
 </html>`
