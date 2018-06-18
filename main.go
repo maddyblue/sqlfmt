@@ -65,7 +65,7 @@ func main() {
 		}()
 	} else {
 		go func() {
-			fmt.Println("HTTP listen on addr:", spec.Addr)
+			fmt.Printf("HTTP listen on: http://%s/\n", spec.Addr)
 			log.Fatal(srv.ListenAndServe())
 		}()
 	}
@@ -145,19 +145,70 @@ input {
 </head>
 <body>
 <h1>sequel  fumpt</h1>
-<p>Type some SQL into the box (multiple statements supported). Move the slider to adjust the desired max-width of the output. Partial SQL support only. <a href="https://github.com/mjibson/sqlfmt">code</a></p>
+<p>Type some SQL into the box (multiple statements supported). Move the slider to adjust the desired max-width of the output.</p>
 <textarea id="sql" style="width: 100%; height: 150px" onChange="range()" onInput="range()">SELECT count(*) count, winner, counter * 60 * 5 as counter FROM (SELECT winner, round(length / 60 / 5) as counter FROM players WHERE build = $1 AND (hero = $2 OR region = $3)) GROUP BY winner, counter</textarea>
 <br><input type="range" min="1" max="200" step="1" name="n" value="40" onChange="range()" onInput="range()" id="n" style="width: 100%">
 <br>width: <span id="nval"></span>
+<br><button id="copy">copy to clipboard</button>
 <br><pre id="fmt"></pre>
 <pre id="width" style="position: absolute; visibility: hidden; height: auto; width: auto;">_</pre>
+<hr>
+by <a href="https://twitter.com/mjibson">@mjibson</a> <a href="https://github.com/mjibson/sqlfmt">github.com/mjibson/sqlfmt</a>
 <script>
+const textCopy = document.getElementById('text-copy');
+const width = document.getElementById('width');
+const n = document.getElementById('n');
+const fmt = document.getElementById('fmt');
+
+document.getElementById('copy').addEventListener('click', ev => {
+	copyTextToClipboard(fmt.innerText);
+});
+
+// https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
+function copyTextToClipboard(text) {
+	var textArea = document.createElement('textarea');
+
+	// Place in top-left corner of screen regardless of scroll position.
+	textArea.style.position = 'fixed';
+	textArea.style.top = 0;
+	textArea.style.left = 0;
+
+	// Ensure it has a small width and height. Setting to 1px / 1em
+	// doesn't work as this gives a negative w/h on some browsers.
+	textArea.style.width = '2em';
+	textArea.style.height = '2em';
+
+	// We don't need padding, reducing the size if it does flash render.
+	textArea.style.padding = 0;
+
+	// Clean up any borders.
+	textArea.style.border = 'none';
+	textArea.style.outline = 'none';
+	textArea.style.boxShadow = 'none';
+
+	// Avoid flash of white box if rendered for any reason.
+	textArea.style.background = 'transparent';
+
+	textArea.value = text;
+
+	document.body.appendChild(textArea);
+	textArea.focus();
+	textArea.select();
+
+	try {
+		var successful = document.execCommand('copy');
+		var msg = successful ? 'successful' : 'unsuccessful';
+		console.log('Copying text command was ' + msg);
+	} catch (err) {
+		console.log('Oops, unable to copy');
+	}
+
+	document.body.removeChild(textArea);
+}
+
 // Some hax to make the slider position the same width as the displayed text.
 /* Disabled because with constrained scren width it's annoying.
-const width = document.getElementById('width').clientWidth;
-const n = document.getElementById('n');
-const fmt = document.getElementById("fmt");
-n.max = n.clientWidth / width;
+n.max = n.clientWidth / width.clientWidth;
 */
 
 let working = false;
@@ -169,38 +220,44 @@ function range() {
 	}
 	working = true;
 	const v = n.value;
-	document.getElementById("nval").innerText = v;
-	const sql = document.getElementById("sql").value;
-	fetch('/fmt?n=' + v + '&sql=' + encodeURIComponent(sql))
-	.then(resp => {
-		working = false;
-		resp.json().then(data => {
-			fmt.innerText = data.map(d => d + ';').join('\n\n');
-			if (pending) {
-				range();
-				pending = false;
-			}
-		}, console.log);
-	}, d => {
-		working = false;
-		console.log(d);
-	});
+	document.getElementById('nval').innerText = v;
+	const sql = document.getElementById('sql').value;
+	fetch('/fmt?n=' + v + '&sql=' + encodeURIComponent(sql)).then(
+		resp => {
+			working = false;
+			resp.json().then(data => {
+				if (data.length === 1 && data[0].includes('syntax error')) {
+					fmt.innerText = data[0];
+				} else {
+					fmt.innerText = data.map(d => d + ';').join('\n\n');
+				}
+				if (pending) {
+					range();
+					pending = false;
+				}
+			}, console.log);
+		},
+		d => {
+			working = false;
+			console.log(d);
+		}
+	);
 }
 
 range();
 
 document.addEventListener('keydown', e => {
 	const code = e.keyCode;
-	let n = document.getElementById("n");
+	let n = document.getElementById('n');
 	switch (code) {
-	case 37:
-		n.value--;
-		range();
-		break;
-	case 39:
-		n.value++;
-		range();
-		break;
+		case 37:
+			n.value--;
+			range();
+			break;
+		case 39:
+			n.value++;
+			range();
+			break;
 	}
 });
 </script>
