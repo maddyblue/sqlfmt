@@ -148,7 +148,7 @@ input {
 <p>Type some SQL into the box (multiple statements supported). Move the slider to adjust the desired max-width of the output.</p>
 <textarea id="sql" style="width: 100%; height: 150px" onChange="range()" onInput="range()">SELECT count(*) count, winner, counter * 60 * 5 as counter FROM (SELECT winner, round(length / 60 / 5) as counter FROM players WHERE build = $1 AND (hero = $2 OR region = $3)) GROUP BY winner, counter</textarea>
 <br><input type="range" min="1" max="200" step="1" name="n" value="40" onChange="range()" onInput="range()" id="n" style="width: 100%">
-<br>width: <span id="nval"></span>
+<br>target width: <span id="nval"></span>, actual width: <span id="actual_width"></span>
 <br><button id="copy">copy to clipboard</button>
 <br><pre id="fmt"></pre>
 <pre id="width" style="position: absolute; visibility: hidden; height: auto; width: auto;">_</pre>
@@ -157,6 +157,7 @@ by <a href="https://twitter.com/mjibson">@mjibson</a> <a href="https://github.co
 <script>
 const textCopy = document.getElementById('text-copy');
 const width = document.getElementById('width');
+const actual = document.getElementById('actual_width');
 const n = document.getElementById('n');
 const fmt = document.getElementById('fmt');
 
@@ -228,8 +229,10 @@ function range() {
 			resp.json().then(data => {
 				if (data.length === 1 && data[0].includes('syntax error')) {
 					fmt.innerText = data[0];
+					actual.innerText = '';
 				} else {
 					fmt.innerText = data.map(d => d + ';').join('\n\n');
+					actual.innerText = Math.max(...fmt.innerText.split('\n').map(v => v.length));
 				}
 				if (pending) {
 					range();
