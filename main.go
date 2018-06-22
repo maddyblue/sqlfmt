@@ -279,21 +279,6 @@ function b64DecodeUnicode(str) {
 	);
 }
 
-document.addEventListener('keydown', e => {
-	const code = e.keyCode;
-	let n = document.getElementById('n');
-	switch (code) {
-		case 37:
-			n.value--;
-			range();
-			break;
-		case 39:
-			n.value++;
-			range();
-			break;
-	}
-});
-
 (() => {
 	const search = new URLSearchParams(location.search);
 	if (location.search) {
