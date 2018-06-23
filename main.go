@@ -109,10 +109,9 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	if err != nil {
 		return []string{err.Error()}
 	}
-	p := tree.MakePrettyCfg(true, 4)
 	res := make([]string, len(sl))
 	for i, s := range sl {
-		res[i], _ = pretty.PrettyString(r.Context(), p.Doc(s), n)
+		res[i], _ = pretty.PrettyString(r.Context(), tree.Doc(s), n)
 	}
 	cache.Lock()
 	if len(cache.m) > 10000 {
