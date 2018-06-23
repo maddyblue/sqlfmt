@@ -151,7 +151,7 @@ input {
 <br><input type="range" min="1" max="200" step="1" name="n" value="40" onChange="range()" onInput="range()" id="n" style="width: 100%">
 <br>target width: <span id="nval"></span>, actual width: <span id="actual_width"></span>
 <br><button id="copy">copy to clipboard</button> <a href="" id="share">share</a>
-<br><pre id="fmt"></pre>
+<br><pre id="fmt" style="tab-size: 4; -moz-tab-size: 4"></pre>
 <pre id="width" style="position: absolute; visibility: hidden; height: auto; width: auto;">_</pre>
 <hr>
 by <a href="https://twitter.com/mjibson">@mjibson</a> <a href="https://github.com/mjibson/sqlfmt">github.com/mjibson/sqlfmt</a>
