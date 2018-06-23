@@ -13,7 +13,6 @@ import (
 
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/util/pretty"
 	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/crypto/acme/autocert"
 
@@ -111,7 +110,7 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	}
 	res := make([]string, len(sl))
 	for i, s := range sl {
-		res[i], _ = pretty.PrettyString(r.Context(), tree.Doc(s), n)
+		res[i] = tree.Pretty(s, n)
 	}
 	cache.Lock()
 	if len(cache.m) > 10000 {
