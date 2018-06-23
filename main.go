@@ -109,7 +109,7 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	if err != nil {
 		return []string{err.Error()}
 	}
-	p := tree.MakePrettyCfg(false, 4)
+	p := tree.MakePrettyCfg(true, 4)
 	res := make([]string, len(sl))
 	for i, s := range sl {
 		res[i], _ = pretty.PrettyString(r.Context(), p.Doc(s), n)
