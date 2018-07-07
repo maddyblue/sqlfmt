@@ -110,7 +110,7 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	}
 	res := make([]string, len(sl))
 	for i, s := range sl {
-		res[i] = tree.PrettyWithOpts(s, n, true, 4)
+		res[i] = tree.PrettyWithOpts(s, n, true, 4, true)
 	}
 	cache.Lock()
 	if len(cache.m) > 10000 {
