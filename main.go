@@ -221,6 +221,7 @@ function range() {
 	const sql = sqlEl.value;
 	localStorage.setItem('sql', sql);
 	localStorage.setItem('n', v);
+	share.href = '/?n=' + v + '&sql=' + encodeURIComponent(b64EncodeUnicode(sql));
 	fetch('/fmt?n=' + v + '&sql=' + encodeURIComponent(sql)).then(
 		resp => {
 			working = false;
@@ -228,11 +229,9 @@ function range() {
 				if (data.length === 1 && data[0].includes('syntax error')) {
 					fmt.innerText = data[0];
 					actual.innerText = '';
-					share.href = '#';
 				} else {
 					fmt.innerText = data.map(d => d + ';').join('\n\n');
 					actual.innerText = Math.max(...fmt.innerText.split('\n').map(v => v.length));
-					share.href = '/?n=' + v + '&sql=' + encodeURIComponent(b64EncodeUnicode(sql));
 				}
 				if (pending) {
 					range();
@@ -275,13 +274,25 @@ function b64DecodeUnicode(str) {
 
 (() => {
 	const search = new URLSearchParams(location.search);
+	let sql = localStorage.getItem('sql');
+	let nVal = localStorage.getItem('n');
 	if (location.search) {
-		window.history.replaceState(null, '', '/');
+		sql = b64DecodeUnicode(search.get('sql'));
+		nVal = search.get('n');
+		const clearSearch = () => {
+			window.history.replaceState(null, '', '/');
+			sqlEl.onkeydown = null;
+			n.oninput = range;
+			n.onchange = range;
+		};
+		sqlEl.onkeydown = clearSearch;
+		n.oninput = () => {
+			clearSearch()
+			range();
+		};
+		n.onchange = n.oninput;
 	}
-	let sql = search.get('sql');
-	sql = sql ? b64DecodeUnicode(sql) : localStorage.getItem('sql');
-	const nVal = search.get('n') || localStorage.getItem('n');
-	if (sql !== null && sql != '') {
+	if (sql !== null) {
 		sqlEl.value = sql;
 	}
 	if (nVal !== null && nVal > 0) {
