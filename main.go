@@ -282,7 +282,7 @@ function b64DecodeUnicode(str) {
 	sql = sql ? b64DecodeUnicode(sql) : localStorage.getItem('sql');
 	const nVal = search.get('n') || localStorage.getItem('n');
 	if (sql !== null && sql != '') {
-		sqlEl.innerText = sql;
+		sqlEl.value = sql;
 	}
 	if (nVal !== null && nVal > 0) {
 		n.value = nVal;
