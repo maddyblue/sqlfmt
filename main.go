@@ -208,11 +208,6 @@ function copyTextToClipboard(text) {
 	document.body.removeChild(textArea);
 }
 
-// Some hax to make the slider position the same width as the displayed text.
-/* Disabled because with constrained scren width it's annoying.
-n.max = n.clientWidth / width.clientWidth;
-*/
-
 let working = false;
 let pending = false;
 function range() {
