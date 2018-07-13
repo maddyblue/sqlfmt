@@ -102,15 +102,27 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 
 	n, err := strconv.Atoi(r.FormValue("n"))
 	if err != nil {
-		return err
+		return []string{"error", err.Error()}
+	}
+	indentWidth, err := strconv.Atoi(r.FormValue("indent"))
+	if err != nil {
+		return []string{"error", err.Error()}
+	}
+	simplify, err := strconv.ParseBool(r.FormValue("simplify"))
+	if err != nil {
+		return []string{"error", err.Error()}
+	}
+	spaces, err := strconv.ParseBool(r.FormValue("spaces"))
+	if err != nil {
+		return []string{"error", err.Error()}
 	}
 	sl, err := parser.Parse(r.FormValue("sql"))
 	if err != nil {
-		return []string{err.Error()}
+		return []string{"error", err.Error()}
 	}
 	res := make([]string, len(sl))
 	for i, s := range sl {
-		res[i] = tree.PrettyWithOpts(s, n, true, 4, true)
+		res[i] = tree.PrettyWithOpts(s, n, !spaces, indentWidth, simplify)
 	}
 	cache.Lock()
 	if len(cache.m) > 10000 {
@@ -147,7 +159,10 @@ input {
 <p>Type some SQL into the box (multiple statements supported). Move the slider to adjust the desired max-width of the output.</p>
 <textarea id="sql" style="width: 100%; height: 150px" onChange="range()" onInput="range()">SELECT count(*) count, winner, counter * 60 * 5 as counter FROM (SELECT winner, round(length / 60 / 5) as counter FROM players WHERE build = $1 AND (hero = $2 OR region = $3)) GROUP BY winner, counter</textarea>
 <br><input type="range" min="1" max="200" step="1" name="n" value="40" onChange="range()" onInput="range()" id="n" style="width: 100%">
-<br>target width: <span id="nval"></span>, actual width: <span id="actual_width"></span>
+<br><input type="range" min="1" max="16" step="1" name="iw" value="4" onChange="range()" onInput="range()" id="iw" style="width: 100%">
+<br>target line width: <span id="nval"></span>, tab/indent width: <span id="iwval"></span>, actual width: <span id="actual_width"></span> (num bytes: <span id="actual_bytes"></span>)
+<br><input type="checkbox" name="simplify" checked="1" onChange="range()" onInput="range()" id="simplify"><label for="simplify">simplify parentheses</label>
+		<input type="checkbox" name="spaces" checked="0" onChange="range()" onInput="range()" id="spaces"><label for="spaces">use spaces not tabs</label>
 <br><button id="copy">copy to clipboard</button> <a href="" id="share">share</a>
 <br><pre id="fmt" style="tab-size: 4; -moz-tab-size: 4"></pre>
 <pre id="width" style="position: absolute; visibility: hidden; height: auto; width: auto;">_</pre>
@@ -156,8 +171,12 @@ by <a href="https://twitter.com/mjibson">@mjibson</a> <a href="https://github.co
 <script>
 const textCopy = document.getElementById('text-copy');
 const width = document.getElementById('width');
-const actual = document.getElementById('actual_width');
+const actualWidth = document.getElementById('actual_width');
+const actualBytes = document.getElementById('actual_bytes');
 const n = document.getElementById('n');
+const iw = document.getElementById('iw');
+const simplify = document.getElementById('simplify');
+const spaces = document.getElementById('spaces');
 const fmt = document.getElementById('fmt');
 const sqlEl = document.getElementById('sql');
 const share = document.getElementById('share');
@@ -218,20 +237,34 @@ function range() {
 	working = true;
 	const v = n.value;
 	document.getElementById('nval').innerText = v;
+	const viw = iw.value;
+	document.getElementById('iwval').innerText = viw;
+	const sim = simplify.checked;
+	const sp = spaces.checked;
 	const sql = sqlEl.value;
+	simVal = 0; if (sim) { simVal = 1; }
+	spVal = 0; if (sp) { spVal = 1; }
 	localStorage.setItem('sql', sql);
 	localStorage.setItem('n', v);
-	share.href = '/?n=' + v + '&sql=' + encodeURIComponent(b64EncodeUnicode(sql));
-	fetch('/fmt?n=' + v + '&sql=' + encodeURIComponent(sql)).then(
+	localStorage.setItem('iw', viw);
+	localStorage.setItem('simplify', simVal);
+	localStorage.setItem('spaces', spVal);
+	fmt.style["tab-size"] = viw;
+	fmt.style["-moz-tab-size"] = viw;
+	share.href = '/?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&sql=' + encodeURIComponent(b64EncodeUnicode(sql));
+	fetch('/fmt?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&sql=' + encodeURIComponent(sql)).then(
 		resp => {
 			working = false;
 			resp.json().then(data => {
-				if (data.length === 1 && data[0].includes('syntax error')) {
-					fmt.innerText = data[0];
-					actual.innerText = '';
+				if (data.length === 2 && data[0].includes('error')) {
+					fmt.innerText = data[1];
+					actualWidth.innerText = '';
+					actualBytes.innerText = '';
 				} else {
 					fmt.innerText = data.map(d => d + ';').join('\n\n');
-					actual.innerText = Math.max(...fmt.innerText.split('\n').map(v => v.length));
+					tabSpaces = " ".repeat(viw);
+					actualWidth.innerText = Math.max(...fmt.innerText.split('\n').map(v => v.replace(/\t/g, tabSpaces).length));
+					actualBytes.innerText = fmt.innerText.length;
 				}
 				if (pending) {
 					range();
@@ -276,6 +309,9 @@ function b64DecodeUnicode(str) {
 	const search = new URLSearchParams(location.search);
 	let sql = localStorage.getItem('sql');
 	let nVal = localStorage.getItem('n');
+	let iwVal = localStorage.getItem('iw');
+	let simVal = localStorage.getItem('simplify');
+	let spVal = localStorage.getItem('spaces');
 	if (location.search) {
 		sql = b64DecodeUnicode(search.get('sql'));
 		nVal = search.get('n');
@@ -297,6 +333,15 @@ function b64DecodeUnicode(str) {
 	}
 	if (nVal !== null && nVal > 0) {
 		n.value = nVal;
+	}
+	if (iwVal !== null && iwVal > 0) {
+		iw.value = iwVal;
+	}
+	if (simVal !== null) {
+		simplify.checked = (simVal > 0);
+	}
+	if (spVal !== null) {
+		spaces.checked = (spVal > 0);
 	}
 })();
 
