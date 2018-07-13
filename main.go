@@ -120,9 +120,16 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
+
+	pcfg := tree.DefaultPrettyCfg()
+	pcfg.LineWidth = n
+	pcfg.UseTabs = !spaces
+	pcfg.IndentWidth = indentWidth
+	pcfg.Simplify = simplify
+
 	res := make([]string, len(sl))
 	for i, s := range sl {
-		res[i] = tree.PrettyWithOpts(s, n, !spaces, indentWidth, simplify)
+		res[i] = pcfg.Pretty(s)
 	}
 	cache.Lock()
 	if len(cache.m) > 10000 {
