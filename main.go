@@ -112,6 +112,10 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
+	align, err := strconv.ParseBool(r.FormValue("align"))
+	if err != nil {
+		return []string{"error", err.Error()}
+	}
 	spaces, err := strconv.ParseBool(r.FormValue("spaces"))
 	if err != nil {
 		return []string{"error", err.Error()}
@@ -126,6 +130,7 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	pcfg.UseTabs = !spaces
 	pcfg.TabWidth = tabWidth
 	pcfg.Simplify = simplify
+	pcfg.Align = align
 
 	res := make([]string, len(sl))
 	for i, s := range sl {
@@ -182,9 +187,11 @@ a {
 	</div>
 	<div style="width: 150px">
 		<h4 style="margin: 0">options:</h4>
-		<label title="tab/indent width">tab width <input type="number" min="1" max="16" step="1" name="iw" value="4" onChange="range()" onInput="range()" id="iw"></label>
-		<br><label title="simplify parentheses">simplify <input type="checkbox" checked="1" onChange="range()" onInput="range()" id="simplify"></label>
-		<br><label title="use tabs instead of spaces">use tabs <input type="checkbox" checked="0" onChange="range()" onInput="range()" id="spaces"></label>
+		<label title="tab/indent width" for="iw">tab width</label>
+		<input type="number" min="1" max="16" step="1" name="iw" value="4" onChange="range()" onInput="range()" id="iw">
+		<br><input type="checkbox" checked="1" onChange="range()" onInput="range()" id="simplify"><label for="simplify" title="simplify parentheses">simplify</label>
+		<br><input type="checkbox" checked="0" onChange="range()" onInput="range()" id="spaces"><label for="spaces" title="use tabs instead of spaces">use tabs</label>
+		<br><input type="checkbox" checked="0" onChange="range()" onInput="range()" id="align"><label for="align" title="align mode">align mode</label>
 	</div>
 </div>
 
@@ -203,6 +210,7 @@ const actualBytes = document.getElementById('actual_bytes');
 const n = document.getElementById('n');
 const iw = document.getElementById('iw');
 const simplify = document.getElementById('simplify');
+const align = document.getElementById('align');
 const spaces = document.getElementById('spaces');
 const fmt = document.getElementById('fmt');
 const sqlEl = document.getElementById('sql');
@@ -267,15 +275,17 @@ function range() {
 	const sql = sqlEl.value;
 	const spVal = spaces.checked ? 0 : 1;
 	const simVal = simplify.checked ? 1 : 0;
+	const alVal = align.checked ? 1 : 0;
 	localStorage.setItem('sql', sql);
 	localStorage.setItem('n', v);
 	localStorage.setItem('iw', viw);
 	localStorage.setItem('simplify', simVal);
+	localStorage.setItem('align', alVal);
 	localStorage.setItem('spaces', spVal);
 	fmt.style["tab-size"] = viw;
 	fmt.style["-moz-tab-size"] = viw;
-	share.href = '/?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&sql=' + encodeURIComponent(b64EncodeUnicode(sql));
-	fetch('/fmt?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&sql=' + encodeURIComponent(sql)).then(
+	share.href = '/?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&align=' + alVal + '&sql=' + encodeURIComponent(b64EncodeUnicode(sql));
+	fetch('/fmt?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&align=' + alVal + '&sql=' + encodeURIComponent(sql)).then(
 		resp => {
 			working = false;
 			resp.json().then(data => {
@@ -339,6 +349,7 @@ function b64DecodeUnicode(str) {
 	let nVal = localStorage.getItem('n');
 	let iwVal = localStorage.getItem('iw');
 	let simVal = localStorage.getItem('simplify');
+	let alVal = localStorage.getItem('align');
 	let spVal = localStorage.getItem('spaces');
 	if (location.search) {
 		sql = b64DecodeUnicode(search.get('sql'));
@@ -367,6 +378,9 @@ function b64DecodeUnicode(str) {
 	}
 	if (simVal !== null) {
 		simplify.checked = (simVal > 0);
+	}
+	if (alVal !== null) {
+		align.checked = (alVal > 0);
 	}
 	if (spVal !== null) {
 		spaces.checked = !(spVal > 0);
