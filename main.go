@@ -112,7 +112,7 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
-	align, err := strconv.ParseBool(r.FormValue("align"))
+	align, err := strconv.Atoi(r.FormValue("align"))
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
@@ -130,7 +130,7 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	pcfg.UseTabs = !spaces
 	pcfg.TabWidth = tabWidth
 	pcfg.Simplify = simplify
-	pcfg.Align = align
+	pcfg.Align = tree.PrettyAlignMode(align)
 
 	res := make([]string, len(sl))
 	for i, s := range sl {
@@ -180,6 +180,7 @@ a {
 <h1>sequel  fumpt</h1>
 <p>Type some SQL. Move the slider to set output width.</p>
 
+<form name="theform">
 <div style="display: flex; flex-wrap: wrap">
 	<div style="flex: 1; margin-right: 4px">
 		<textarea id="sql" style="box-sizing: border-box; width: 100%; height: 150px" onChange="range()" onInput="range()">SELECT count(*) count, winner, counter * 60 * 5 as counter FROM (SELECT winner, round((length / 60) / 5) as counter FROM players WHERE build = $1 AND (hero = $2 OR region = $3)) GROUP BY winner, counter</textarea>
@@ -191,9 +192,14 @@ a {
 		<input type="number" min="1" max="16" step="1" name="iw" value="4" onChange="range()" onInput="range()" id="iw">
 		<br><input type="checkbox" checked="1" onChange="range()" onInput="range()" id="simplify"><label for="simplify" title="simplify parentheses">simplify</label>
 		<br><input type="checkbox" checked="0" onChange="range()" onInput="range()" id="spaces"><label for="spaces" title="use tabs instead of spaces">use tabs</label>
-		<br><input type="checkbox" checked="0" onChange="range()" onInput="range()" id="align"><label for="align" title="align mode">align mode</label>
+		<br>Alignment mode:
+		<br><input type="radio" name="align" value="0" onChange="range()" onInput="range()" id="align1" checked><label for="align1">no</label>
+		<input type="radio" name="align" value="2" onChange="range()" onInput="range()" id="align2"><label for="align2">full</label>
+		<br><input type="radio" name="align" value="1" onChange="range()" onInput="range()" id="align3"><label for="align3">partial</label>
+		<input type="radio" name="align" value="3" onChange="range()" onInput="range()" id="align4"><label for="align4">other</label>
 	</div>
 </div>
+</form>
 
 target line width: <span id="nval"></span>, actual width: <span id="actual_width"></span> (num bytes: <span id="actual_bytes"></span>)
 <br><button id="copy">copy to clipboard</button> <a href="" id="share">share</a>
@@ -210,7 +216,7 @@ const actualBytes = document.getElementById('actual_bytes');
 const n = document.getElementById('n');
 const iw = document.getElementById('iw');
 const simplify = document.getElementById('simplify');
-const align = document.getElementById('align');
+const align = document.theform.align;
 const spaces = document.getElementById('spaces');
 const fmt = document.getElementById('fmt');
 const sqlEl = document.getElementById('sql');
@@ -275,7 +281,7 @@ function range() {
 	const sql = sqlEl.value;
 	const spVal = spaces.checked ? 0 : 1;
 	const simVal = simplify.checked ? 1 : 0;
-	const alVal = align.checked ? 1 : 0;
+	const alVal = align.value;
 	localStorage.setItem('sql', sql);
 	localStorage.setItem('n', v);
 	localStorage.setItem('iw', viw);
@@ -380,7 +386,7 @@ function b64DecodeUnicode(str) {
 		simplify.checked = (simVal > 0);
 	}
 	if (alVal !== null) {
-		align.checked = (alVal > 0);
+		align.value = alVal;
 	}
 	if (spVal !== null) {
 		spaces.checked = !(spVal > 0);
