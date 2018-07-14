@@ -104,7 +104,7 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
-	indentWidth, err := strconv.Atoi(r.FormValue("indent"))
+	tabWidth, err := strconv.Atoi(r.FormValue("indent"))
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
@@ -124,7 +124,7 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	pcfg := tree.DefaultPrettyCfg()
 	pcfg.LineWidth = n
 	pcfg.UseTabs = !spaces
-	pcfg.IndentWidth = indentWidth
+	pcfg.TabWidth = tabWidth
 	pcfg.Simplify = simplify
 
 	res := make([]string, len(sl))
