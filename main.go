@@ -272,6 +272,9 @@ function range() {
 					tabSpaces = " ".repeat(viw);
 					actualWidth.innerText = Math.max(...fmt.innerText.split('\n').map(v => v.replace(/\t/g, tabSpaces).length));
 					actualBytes.innerText = fmt.innerText.length;
+					hLine = "--";
+					if (v > 2) { hLine = hLine + "-".repeat(v-2); }
+					fmt.innerText = hLine + "\n" + fmt.innerText;
 				}
 				if (pending) {
 					range();
