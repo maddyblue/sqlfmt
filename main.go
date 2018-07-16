@@ -148,36 +148,56 @@ const Index = `<!DOCTYPE html>
 <title>sequel  fumpt</title>
 <style>
 body {
-	max-width: 38rem;
-	margin-left: auto;
-	margin-right: auto;
+	margin: 0;
+	padding: 8px;
 	color: #303030;
-	font-size: 16px;
+	font-size: 1rem;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 input {
 	margin: 0;
 	padding: 0;
 }
+html, body {
+	overflow-x: hidden;
+}
+a {
+	color: #268bd2;
+}
+.full-width {
+	margin: 10px -9999rem;
+	padding: 0 9999rem;
+	background: rgba(0, 0, 0, 0.05);
+}
 </style>
 </head>
 <body>
 <h1>sequel  fumpt</h1>
-<p>Type some SQL into the box (multiple statements supported). Move the slider to adjust the desired max-width of the output.</p>
-<textarea id="sql" style="width: 100%; height: 150px" onChange="range()" onInput="range()">SELECT count(*) count, winner, counter * 60 * 5 as counter FROM (SELECT winner, round(length / 60 / 5) as counter FROM players WHERE build = $1 AND (hero = $2 OR region = $3)) GROUP BY winner, counter</textarea>
-<br><input type="range" min="1" max="200" step="1" name="n" value="40" onChange="range()" onInput="range()" id="n" style="width: 100%">
-<br><input type="range" min="1" max="16" step="1" name="iw" value="4" onChange="range()" onInput="range()" id="iw" style="width: 100%">
-<br>target line width: <span id="nval"></span>, tab/indent width: <span id="iwval"></span>, actual width: <span id="actual_width"></span> (num bytes: <span id="actual_bytes"></span>)
-<br><input type="checkbox" name="simplify" checked="1" onChange="range()" onInput="range()" id="simplify"><label for="simplify">simplify parentheses</label>
-		<input type="checkbox" name="spaces" checked="0" onChange="range()" onInput="range()" id="spaces"><label for="spaces">use spaces not tabs</label>
+<p>Type some SQL. Move the slider to set output width.</p>
+
+<div style="display: flex; flex-wrap: wrap">
+	<div style="flex: 1; margin-right: 4px">
+		<textarea id="sql" style="box-sizing: border-box; width: 100%; height: 150px" onChange="range()" onInput="range()">SELECT count(*) count, winner, counter * 60 * 5 as counter FROM (SELECT winner, round((length / 60) / 5) as counter FROM players WHERE build = $1 AND (hero = $2 OR region = $3)) GROUP BY winner, counter</textarea>
+		<input type="range" min="1" max="200" step="1" name="n" value="40" onChange="range()" onInput="range()" id="n" style="width: 100%">
+	</div>
+	<div style="width: 150px">
+		<h4 style="margin: 0">options:</h4>
+		<label title="tab/indent width">tab width <input type="number" min="1" max="16" step="1" name="iw" value="4" onChange="range()" onInput="range()" id="iw"></label>
+		<br><label title="simplify parentheses">simplify <input type="checkbox" checked="1" onChange="range()" onInput="range()" id="simplify"></label>
+		<br><label title="use tabs instead of spaces">use tabs <input type="checkbox" checked="0" onChange="range()" onInput="range()" id="spaces"></label>
+	</div>
+</div>
+
+target line width: <span id="nval"></span>, actual width: <span id="actual_width"></span> (num bytes: <span id="actual_bytes"></span>)
 <br><button id="copy">copy to clipboard</button> <a href="" id="share">share</a>
-<br><pre id="fmt" style="tab-size: 4; -moz-tab-size: 4"></pre>
-<pre id="width" style="position: absolute; visibility: hidden; height: auto; width: auto;">_</pre>
-<hr>
+
+<div class="full-width">
+	<pre id="fmt" style="padding: 5px 0; overflow-x: auto"></pre>
+</div>
+
 by <a href="https://twitter.com/mjibson">@mjibson</a> <a href="https://github.com/mjibson/sqlfmt">github.com/mjibson/sqlfmt</a>
 <script>
 const textCopy = document.getElementById('text-copy');
-const width = document.getElementById('width');
 const actualWidth = document.getElementById('actual_width');
 const actualBytes = document.getElementById('actual_bytes');
 const n = document.getElementById('n');
@@ -187,14 +207,15 @@ const spaces = document.getElementById('spaces');
 const fmt = document.getElementById('fmt');
 const sqlEl = document.getElementById('sql');
 const share = document.getElementById('share');
+let fmtText;
 
 document.getElementById('copy').addEventListener('click', ev => {
-	copyTextToClipboard(fmt.innerText);
+	copyTextToClipboard(fmtText);
 });
 
 // https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
 function copyTextToClipboard(text) {
-	var textArea = document.createElement('textarea');
+	const textArea = document.createElement('textarea');
 
 	// Place in top-left corner of screen regardless of scroll position.
 	textArea.style.position = 'fixed';
@@ -224,11 +245,9 @@ function copyTextToClipboard(text) {
 	textArea.select();
 
 	try {
-		var successful = document.execCommand('copy');
-		var msg = successful ? 'successful' : 'unsuccessful';
-		console.log('Copying text command was ' + msg);
+		document.execCommand('copy');
 	} catch (err) {
-		console.log('Oops, unable to copy');
+		console.log(err);
 	}
 
 	document.body.removeChild(textArea);
@@ -245,12 +264,9 @@ function range() {
 	const v = n.value;
 	document.getElementById('nval').innerText = v;
 	const viw = iw.value;
-	document.getElementById('iwval').innerText = viw;
-	const sim = simplify.checked;
-	const sp = spaces.checked;
 	const sql = sqlEl.value;
-	simVal = 0; if (sim) { simVal = 1; }
-	spVal = 0; if (sp) { spVal = 1; }
+	const spVal = spaces.checked ? 0 : 1;
+	const simVal = simplify.checked ? 1 : 0;
 	localStorage.setItem('sql', sql);
 	localStorage.setItem('n', v);
 	localStorage.setItem('iw', viw);
@@ -268,13 +284,15 @@ function range() {
 					actualWidth.innerText = '';
 					actualBytes.innerText = '';
 				} else {
-					fmt.innerText = data.map(d => d + ';').join('\n\n');
+					fmtText = data.map(d => d + ';').join('\n\n');
 					tabSpaces = " ".repeat(viw);
-					actualWidth.innerText = Math.max(...fmt.innerText.split('\n').map(v => v.replace(/\t/g, tabSpaces).length));
-					actualBytes.innerText = fmt.innerText.length;
+					actualWidth.innerText = Math.max(...fmtText.split('\n').map(v => v.replace(/\t/g, tabSpaces).length));
+					actualBytes.innerText = fmtText.length;
 					hLine = "--";
-					if (v > 2) { hLine = hLine + "-".repeat(v-2); }
-					fmt.innerText = hLine + "\n" + fmt.innerText;
+					if (v > 2) {
+						hLine = hLine + "-".repeat(v-2);
+					}
+					fmt.innerText = hLine + "\n\n" + fmtText;
 				}
 				if (pending) {
 					range();
@@ -317,7 +335,7 @@ function b64DecodeUnicode(str) {
 
 (() => {
 	const search = new URLSearchParams(location.search);
-	let sql = localStorage.getItem('sql');
+	let sql = localStorage.getItem('sql') || null;
 	let nVal = localStorage.getItem('n');
 	let iwVal = localStorage.getItem('iw');
 	let simVal = localStorage.getItem('simplify');
@@ -351,7 +369,7 @@ function b64DecodeUnicode(str) {
 		simplify.checked = (simVal > 0);
 	}
 	if (spVal !== null) {
-		spaces.checked = (spVal > 0);
+		spaces.checked = !(spVal > 0);
 	}
 })();
 
