@@ -191,6 +191,9 @@ a {
 	padding: 0 9999rem;
 	background: rgba(0, 0, 0, 0.05);
 }
+.jsonly {
+	display: none;
+}
 </style>
 </head>
 <body>
@@ -200,27 +203,29 @@ a {
 <form name="theform" method="get" action="/fmt">
 <div style="display: flex; flex-wrap: wrap">
 	<div style="flex: 1; margin-right: 4px">
-		<textarea id="sql" style="box-sizing: border-box; width: 100%; height: 200px" onChange="range()" onInput="range()"></textarea>
+		<textarea id="sql" name="sql" style="box-sizing: border-box; width: 100%; height: 200px" onChange="range()" onInput="range()"></textarea>
 		<input type="range" min="1" max="200" step="1" name="n" value="40" onChange="range()" onInput="range()" id="n" style="width: 100%">
 	</div>
 	<div style="width: 150px">
 		<h4 style="margin: 0">options:</h4>
 		<label title="tab/indent width" for="iw">tab width</label>
-		<br><input type="number" min="1" max="16" step="1" name="indent" value="4" onChange="range()" onInput="range()" id="indent">
+		<input type="number" min="1" max="16" step="1" name="indent" value="4" onChange="range()" onInput="range()" id="indent">
 		<br><input type="checkbox" checked="1" onChange="range()" onInput="range()" name="simplify" id="simplify"><label for="simplify" title="simplify parentheses">simplify</label>
 		<br><input type="checkbox" checked="0" onChange="range()" onInput="range()" name="spaces" id="spaces"><label for="spaces" title="use spaces instead of tabs">use spaces</label>
-		<br>Alignment mode:
+		<br>alignment mode:
 		<br><input type="radio" name="align" value="0" onChange="range()" onInput="range()" id="align1" checked><label for="align1">no</label>
 		<input type="radio" name="align" value="2" onChange="range()" onInput="range()" id="align2"><label for="align2">full</label>
 		<br><input type="radio" name="align" value="1" onChange="range()" onInput="range()" id="align3"><label for="align3">partial</label>
 		<input type="radio" name="align" value="3" onChange="range()" onInput="range()" id="align4"><label for="align4">other</label>
+		<span class="jsonly"><br><button type="button" onClick="resetVals()" id="reset">reset to defaults</button></span>
 	</div>
 </div>
-</form>
 
 target line width: <span id="nval"></span>, actual width: <span id="actual_width"></span> (num bytes: <span id="actual_bytes"></span>)
 <br><input type="submit" id="submitButton">
-<span style="display:none" id="jsonly"><button onClick="resetVals()" id="reset">reset form to defaults</button> <button id="copy">copy to clipboard</button> <a href="" id="share">share</a></span>
+</form>
+
+<span class="jsonly"><button id="copy">copy to clipboard</button> <a href="" id="share">share</a></span>
 
 <div class="full-width">
 	<pre id="fmt" style="padding: 5px 0; overflow-x: auto"></pre>
@@ -242,7 +247,7 @@ const share = document.getElementById('share');
 const reset = document.getElementById('reset');
 
 document.getElementById('submitButton').style.display = 'none';
-document.getElementById('jsonly').style.display = 'inline';
+Object.values(document.getElementsByClassName('jsonly')).forEach(v => v.style.display = 'inline');
 
 let fmtText;
 
