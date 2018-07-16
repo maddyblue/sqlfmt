@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
@@ -75,12 +76,17 @@ func main() {
 	srv.Close()
 }
 
-func wrap(f func(http.ResponseWriter, *http.Request) interface{}) http.HandlerFunc {
+func wrap(f func(http.ResponseWriter, *http.Request) []string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res := f(w, r)
-		w.Header().Add("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(res); err != nil {
-			log.Print(err)
+		if r.FormValue("json") == "" {
+			w.Header().Add("Content-Type", "text/plain")
+			fmt.Fprintln(w, strings.Join(res, ";\n"))
+		} else {
+			w.Header().Add("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				log.Print(err)
+			}
 		}
 	}
 }
@@ -92,7 +98,18 @@ var cache = struct {
 	m: make(map[string][]string),
 }
 
-func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
+func parseBool(val string) (bool, error) {
+	switch val {
+	case "on":
+		return true, nil
+	case "off":
+		return false, nil
+	default:
+		return strconv.ParseBool(val)
+	}
+}
+
+func Fmt(w http.ResponseWriter, r *http.Request) []string {
 	cache.Lock()
 	hit, ok := cache.m[r.URL.RawQuery]
 	cache.Unlock()
@@ -104,15 +121,19 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
-	indentWidth, err := strconv.Atoi(r.FormValue("indent"))
+	tabWidth, err := strconv.Atoi(r.FormValue("indent"))
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
-	simplify, err := strconv.ParseBool(r.FormValue("simplify"))
+	simplify, err := parseBool(r.FormValue("simplify"))
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
-	spaces, err := strconv.ParseBool(r.FormValue("spaces"))
+	align, err := strconv.Atoi(r.FormValue("align"))
+	if err != nil {
+		return []string{"error", err.Error()}
+	}
+	spaces, err := parseBool(r.FormValue("spaces"))
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
@@ -124,8 +145,9 @@ func Fmt(w http.ResponseWriter, r *http.Request) interface{} {
 	pcfg := tree.DefaultPrettyCfg()
 	pcfg.LineWidth = n
 	pcfg.UseTabs = !spaces
-	pcfg.IndentWidth = indentWidth
+	pcfg.TabWidth = tabWidth
 	pcfg.Simplify = simplify
+	pcfg.Align = tree.PrettyAlignMode(align)
 
 	res := make([]string, len(sl))
 	for i, s := range sl {
@@ -175,21 +197,30 @@ a {
 <h1>sequel  fumpt</h1>
 <p>Type some SQL. Move the slider to set output width.</p>
 
+<form name="theform" method="get" action="/fmt">
 <div style="display: flex; flex-wrap: wrap">
 	<div style="flex: 1; margin-right: 4px">
-		<textarea id="sql" style="box-sizing: border-box; width: 100%; height: 150px" onChange="range()" onInput="range()">SELECT count(*) count, winner, counter * 60 * 5 as counter FROM (SELECT winner, round((length / 60) / 5) as counter FROM players WHERE build = $1 AND (hero = $2 OR region = $3)) GROUP BY winner, counter</textarea>
+		<textarea id="sql" style="box-sizing: border-box; width: 100%; height: 200px" onChange="range()" onInput="range()"></textarea>
 		<input type="range" min="1" max="200" step="1" name="n" value="40" onChange="range()" onInput="range()" id="n" style="width: 100%">
 	</div>
 	<div style="width: 150px">
 		<h4 style="margin: 0">options:</h4>
-		<label title="tab/indent width">tab width <input type="number" min="1" max="16" step="1" name="iw" value="4" onChange="range()" onInput="range()" id="iw"></label>
-		<br><label title="simplify parentheses">simplify <input type="checkbox" checked="1" onChange="range()" onInput="range()" id="simplify"></label>
-		<br><label title="use tabs instead of spaces">use tabs <input type="checkbox" checked="0" onChange="range()" onInput="range()" id="spaces"></label>
+		<label title="tab/indent width" for="iw">tab width</label>
+		<br><input type="number" min="1" max="16" step="1" name="indent" value="4" onChange="range()" onInput="range()" id="indent">
+		<br><input type="checkbox" checked="1" onChange="range()" onInput="range()" name="simplify" id="simplify"><label for="simplify" title="simplify parentheses">simplify</label>
+		<br><input type="checkbox" checked="0" onChange="range()" onInput="range()" name="spaces" id="spaces"><label for="spaces" title="use spaces instead of tabs">use spaces</label>
+		<br>Alignment mode:
+		<br><input type="radio" name="align" value="0" onChange="range()" onInput="range()" id="align1" checked><label for="align1">no</label>
+		<input type="radio" name="align" value="2" onChange="range()" onInput="range()" id="align2"><label for="align2">full</label>
+		<br><input type="radio" name="align" value="1" onChange="range()" onInput="range()" id="align3"><label for="align3">partial</label>
+		<input type="radio" name="align" value="3" onChange="range()" onInput="range()" id="align4"><label for="align4">other</label>
 	</div>
 </div>
+</form>
 
 target line width: <span id="nval"></span>, actual width: <span id="actual_width"></span> (num bytes: <span id="actual_bytes"></span>)
-<br><button id="copy">copy to clipboard</button> <a href="" id="share">share</a>
+<br><input type="submit" id="submitButton">
+<span style="display:none" id="jsonly"><button onClick="resetVals()" id="reset">reset form to defaults</button> <button id="copy">copy to clipboard</button> <a href="" id="share">share</a></span>
 
 <div class="full-width">
 	<pre id="fmt" style="padding: 5px 0; overflow-x: auto"></pre>
@@ -201,17 +232,29 @@ const textCopy = document.getElementById('text-copy');
 const actualWidth = document.getElementById('actual_width');
 const actualBytes = document.getElementById('actual_bytes');
 const n = document.getElementById('n');
-const iw = document.getElementById('iw');
+const iw = document.getElementById('indent');
 const simplify = document.getElementById('simplify');
+const align = document.theform.align;
 const spaces = document.getElementById('spaces');
 const fmt = document.getElementById('fmt');
 const sqlEl = document.getElementById('sql');
 const share = document.getElementById('share');
+const reset = document.getElementById('reset');
+
+document.getElementById('submitButton').style.display = 'none';
+document.getElementById('jsonly').style.display = 'inline';
+
 let fmtText;
 
 document.getElementById('copy').addEventListener('click', ev => {
 	copyTextToClipboard(fmtText);
 });
+
+function resetVals() {
+	localStorage.clear();
+	reloadVals();
+	range();
+}
 
 // https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
 function copyTextToClipboard(text) {
@@ -265,17 +308,19 @@ function range() {
 	document.getElementById('nval').innerText = v;
 	const viw = iw.value;
 	const sql = sqlEl.value;
-	const spVal = spaces.checked ? 0 : 1;
+	const spVal = spaces.checked ? 1 : 0;
 	const simVal = simplify.checked ? 1 : 0;
+	const alVal = align.value;
 	localStorage.setItem('sql', sql);
 	localStorage.setItem('n', v);
 	localStorage.setItem('iw', viw);
 	localStorage.setItem('simplify', simVal);
+	localStorage.setItem('align', alVal);
 	localStorage.setItem('spaces', spVal);
 	fmt.style["tab-size"] = viw;
 	fmt.style["-moz-tab-size"] = viw;
-	share.href = '/?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&sql=' + encodeURIComponent(b64EncodeUnicode(sql));
-	fetch('/fmt?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&sql=' + encodeURIComponent(sql)).then(
+	share.href = '/?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&align=' + alVal + '&sql=' + encodeURIComponent(b64EncodeUnicode(sql));
+	fetch('/fmt?json=1&n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&align=' + alVal + '&sql=' + encodeURIComponent(sql)).then(
 		resp => {
 			working = false;
 			resp.json().then(data => {
@@ -333,43 +378,75 @@ function b64DecodeUnicode(str) {
 	);
 }
 
-(() => {
-	const search = new URLSearchParams(location.search);
-	let sql = localStorage.getItem('sql') || null;
+function reloadVals() {
+	// Load initial defaults from storage.
+	let sql = localStorage.getItem('sql');
 	let nVal = localStorage.getItem('n');
 	let iwVal = localStorage.getItem('iw');
 	let simVal = localStorage.getItem('simplify');
+	let alVal = localStorage.getItem('align');
 	let spVal = localStorage.getItem('spaces');
+
+	// Load predefined defaults, for each value that didn't have a default in storage.
+	if (sql === null) {
+		sql = "SELECT count(*) count, winner, counter * (60 * 5) as counter FROM (SELECT winner, round(length / (60 * 5)) as counter FROM players WHERE build = $1 AND (hero = $2 OR region = $3)) GROUP BY winner, counter;\n"+
+				"INSERT INTO players(build, hero, region, winner, length) VALUES ($1, $2, $3, $4, $5);\n"+
+				"INSERT INTO players SELECT players_copy ORDER BY length;\n"+
+				"UPDATE players SET count = 0 WHERE build = $1 AND (hero = $2 OR region = $3) LIMIT 1;"
+	}
+	if (nVal === null) { nVal = 60; }
+	if (iwVal === null) { iwVal = 4; }
+	if (simVal === null) { simVal = 1; }
+	if (alVal === null) { alVal = 0; }
+	if (spVal === null) { spVal = 0; }
+
+	// Override any value from the URL.
 	if (location.search) {
-		sql = b64DecodeUnicode(search.get('sql'));
-		nVal = search.get('n');
+		const search = new URLSearchParams(location.search);
+		if (search.has('sql'))      { sql = b64DecodeUnicode(search.get('sql'));	}
+		if (search.has('n'))        { nVal = search.get('n'); }
+		if (search.has('indent'))   { iwVal = search.get('indent'); }
+		if (search.has('align'))    { alVal = search.get('align'); }
+		if (search.has('simplify')) { simVal = search.get('simplify'); }
+		if (search.has('spaces'))   { spVal = search.get('spaces'); }
+	}
+
+	// Populate the form.
+	sqlEl.value = sql;
+	n.value = nVal;
+	iw.value = iwVal;
+	simplify.checked = !!simVal;
+	align.value = alVal;
+	spaces.checked = !!spVal;
+}
+
+reloadVals();
+
+(() => {
+	if (location.search) {
 		const clearSearch = () => {
 			window.history.replaceState(null, '', '/');
 			sqlEl.onkeydown = null;
-			n.oninput = range;
-			n.onchange = range;
+			n.oninput = n.onchange = range;
+			iw.oninput = iw.onchange = range;
+			simplify.oninput = simplify.onchange = range;
+			align.oninput = simplify.oninput = range;
+			spaces.oninput = spaces.oninput = range;
+			reset.onclick = resetVals;
 		};
 		sqlEl.onkeydown = clearSearch;
-		n.oninput = () => {
-			clearSearch()
+		n.oninput = n.onchange = () => {
+			clearSearch();
 			range();
 		};
-		n.onchange = n.oninput;
-	}
-	if (sql !== null) {
-		sqlEl.value = sql;
-	}
-	if (nVal !== null && nVal > 0) {
-		n.value = nVal;
-	}
-	if (iwVal !== null && iwVal > 0) {
-		iw.value = iwVal;
-	}
-	if (simVal !== null) {
-		simplify.checked = (simVal > 0);
-	}
-	if (spVal !== null) {
-		spaces.checked = !(spVal > 0);
+		iw.oninput = iw.onchange = n.oninput;
+		simplify.oninput = simplify.onchange = n.oninput;
+		align.oninput = simplify.oninput = n.oninput;
+		spaces.oninput = spaces.oninput = n.oninput;
+		reset.onclick = () => {
+			clearSearch();
+			resetVals();
+		};
 	}
 })();
 
