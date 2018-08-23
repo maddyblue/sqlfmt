@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -41,9 +42,22 @@ func main() {
 		spec.Addr = ":80"
 	}
 
+	base := template.Must(template.New("base").Parse(Base))
+	index := template.Must(template.Must(base.Clone()).Parse(Index))
+	about := template.Must(template.Must(base.Clone()).Parse(About))
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(Index))
+		if err := index.Execute(w, nil); err != nil {
+			fmt.Println(err)
+			http.Error(w, err.Error(), 500)
+		}
+	})
+	mux.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
+		if err := about.Execute(w, nil); err != nil {
+			fmt.Println(err)
+			http.Error(w, err.Error(), 500)
+		}
 	})
 	mux.HandleFunc("/fmt", wrap(Fmt))
 	srv := &http.Server{
@@ -196,7 +210,8 @@ func Fmt(w http.ResponseWriter, r *http.Request) []string {
 	return res
 }
 
-const Index = `<!DOCTYPE html>
+const (
+	Base = `<!DOCTYPE html>
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
@@ -232,6 +247,76 @@ a {
 </head>
 <body>
 <h1>sequel  fumpt</h1>
+{{block "content" .}}{{end}}
+</body>
+</html>`
+
+	About = `{{define "content"}}
+<p>
+sqlfmt is an online SQL formatter. It is pronounced sequel fumpt. Its purpose is to beautifully format SQL statements.
+</p>
+
+<h2>Features</h2>
+
+<ul>
+	<li>Understands the PostgreSQL dialect (and any CockroachDB extensions).</li>
+	<li>Attempts to use available horizontal space in the best way possible.</li>
+	<li>Always maintains visual alignment regardless of your editor configuration to use spaces or tabs at any tab width.</li>
+</ul>
+
+<h2>Usage</h2>
+
+<p>There is a box in which to paste or type SQL statements. Multiple statements are supported by separating them with a semicolon (<code>;</code>). The slider below the box controls the desired maximum line width in characters. Various options on the side control tab/indentation width, the use of spaces or tabs, simplification, and alignment modes. Simplification causes the formatter to remove unneeded parentheses and words when the meaning will be the same without them.</p>
+
+<p>There are four alignment modes. The default, <code>no</code>, uses left alignment. <code>partial</code> right aligns keywords at the width of the longest keyword at the beginning of all lines immediately below. <code>full</code> is the same as <code>partial</code> but the keywords <code>AND</code> and <code>OR</code> are deindented, in a style similar to the sqlite tests. <code>other</code> is like <code>partial</code> but instead of deindenting <code>AND</code> and <code>OR</code>, their arguments are instead indented.</p>
+
+<h3>no:</h3>
+<pre>
+SELECT
+    a
+FROM
+    t
+WHERE
+    c
+    AND b
+    OR d
+</pre>
+
+<h3>partial:</h3>
+<pre>
+SELECT a
+  FROM t
+ WHERE c
+       AND b
+       OR d
+</pre>
+
+<h3>full:</h3>
+<pre>
+SELECT a
+  FROM t
+ WHERE c
+   AND b
+    OR d
+</pre>
+
+<h3>other:</h3>
+<pre>
+SELECT a
+  FROM t
+ WHERE    c
+          AND
+            b
+       OR d
+</pre>
+
+<hr>
+<a href="/">index</a>
+<br>by <a href="https://twitter.com/mjibson">@mjibson</a>
+<br>code: <a href="https://github.com/mjibson/sqlfmt">github.com/mjibson/sqlfmt</a>
+{{end}}`
+
+	Index = `{{define "content"}}
 <p>Type some SQL. Move the slider to set output width.</p>
 
 <form name="theform" method="get" action="/fmt">
@@ -265,7 +350,7 @@ target line width: <span id="nval"></span>, actual width: <span id="actual_width
 	<pre id="fmt" style="padding: 5px 0; overflow-x: auto"></pre>
 </div>
 
-by <a href="https://twitter.com/mjibson">@mjibson</a> <a href="https://github.com/mjibson/sqlfmt">github.com/mjibson/sqlfmt</a>
+<a href="/about">about</a>
 <script>
 const textCopy = document.getElementById('text-copy');
 const actualWidth = document.getElementById('actual_width');
@@ -491,5 +576,5 @@ reloadVals();
 
 range();
 </script>
-</body>
-</html>`
+{{end}}`
+)
