@@ -4,7 +4,7 @@ metadata:
   name: sqlfmt
 spec:
   serviceName: "sqlfmt"
-  replicas: 1
+  replicas: 3
   template:
     metadata:
       labels:
@@ -19,29 +19,13 @@ spec:
             value: ":443"
           - name: SQLFMT_AUTOCERT
             value: "sqlfmt.mattjibson.com,sqlfum.pt"
-          - name: SQLFMT_CACHE
-            value: "/datadir/cache"
           - name: SQLFMT_REDIR
             value: ":80"
+          - name: SQLFMT_DBCACHE
+            value: "postgres://root@cockroachdb-public:26257/hots?sslmode=disable"
         ports:
         - containerPort: 80
         - containerPort: 443
-        volumeMounts:
-        - name: datadir
-          mountPath: /datadir
-      volumes:
-      - name: datadir
-        persistentVolumeClaim:
-          claimName: datadir
-  volumeClaimTemplates:
-  - metadata:
-      name: datadir
-    spec:
-      accessModes:
-        - "ReadWriteOnce"
-      resources:
-        requests:
-          storage: 0.1Gi
 ---
 apiVersion: v1
 kind: Service
