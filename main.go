@@ -253,7 +253,9 @@ a {
 
 	About = `{{define "content"}}
 <p>
-sqlfmt is an online SQL formatter. It is pronounced sequel fumpt. Its purpose is to beautifully format SQL statements.
+sqlfmt is an online SQL formatter.
+It is pronounced sequel <a href="https://twitter.com/rob_pike/status/1034957357854257152">fumpt</a>.
+Its purpose is to beautifully format SQL statements.
 </p>
 
 <h2>Features</h2>
