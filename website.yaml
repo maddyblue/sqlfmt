@@ -26,9 +26,6 @@ spec:
         ports:
         - containerPort: 80
         - containerPort: 443
-        resources:
-          limits:
-            memory: "1G"
 ---
 apiVersion: v1
 kind: Service

@@ -63,7 +63,7 @@ func main() {
 	srv := &http.Server{
 		Addr:           spec.Addr,
 		Handler:        mux,
-		MaxHeaderBytes: (1 << 10) * 200, // 200KB
+		MaxHeaderBytes: (1 << 10) * 20, // 20KB
 	}
 
 	if len(spec.Autocert) > 0 {
@@ -95,8 +95,10 @@ func main() {
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c)
-	<-c
+	sig := <-c
+	fmt.Println("closing server: got signal", sig)
 	srv.Close()
+	fmt.Println("closed server")
 }
 
 const autocertPrefix = "autocert-"
@@ -141,7 +143,7 @@ func wrap(f func(http.ResponseWriter, *http.Request) []string) http.HandlerFunc 
 }
 
 var cache = struct {
-	sync.Mutex
+	sync.RWMutex
 	m map[string][]string
 }{
 	m: make(map[string][]string),
@@ -159,23 +161,37 @@ func parseBool(val string) (bool, error) {
 }
 
 func Fmt(w http.ResponseWriter, r *http.Request) []string {
-	sql := r.FormValue("sql")
-	trimmed := strings.Join(strings.Fields(sql), " ")
-	if len(trimmed) > 200 {
-		trimmed = trimmed[:200]
-	}
-	log.Printf("fmt: %s", trimmed)
-	cache.Lock()
+	cache.RLock()
 	hit, ok := cache.m[r.URL.RawQuery]
-	cache.Unlock()
+	cache.RUnlock()
 	if ok {
 		return hit
+	}
+
+	res := fmtsql(r)
+	cache.Lock()
+	if len(cache.m) > 10000 {
+		for k := range cache.m {
+			delete(cache.m, k)
+		}
+	}
+	cache.m[r.URL.RawQuery] = res
+	cache.Unlock()
+	return res
+}
+
+func fmtsql(r *http.Request) []string {
+	sql := r.FormValue("sql")
+	trimmed := strings.Join(strings.Fields(sql), " ")
+	if len(trimmed) > 100 {
+		trimmed = trimmed[:100]
 	}
 
 	n, err := strconv.Atoi(r.FormValue("n"))
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
+	log.Printf("fmt (sqln: %d, n: %d): %s", len(sql), n, trimmed)
 	tabWidth, err := strconv.Atoi(r.FormValue("indent"))
 	if err != nil {
 		return []string{"error", err.Error()}
@@ -208,12 +224,6 @@ func Fmt(w http.ResponseWriter, r *http.Request) []string {
 	for i, s := range sl {
 		res[i] = pcfg.Pretty(s)
 	}
-	cache.Lock()
-	if len(cache.m) > 1000 {
-		cache.m = make(map[string][]string)
-	}
-	cache.m[r.URL.RawQuery] = res
-	cache.Unlock()
 	return res
 }
 
