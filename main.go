@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
@@ -94,7 +95,7 @@ func main() {
 	}
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c)
+	signal.Notify(c, os.Interrupt, os.Kill, os.Signal(syscall.SIGHUP), os.Signal(syscall.SIGTERM))
 	sig := <-c
 	fmt.Println("closing server: got signal", sig)
 	srv.Close()
