@@ -4,7 +4,7 @@ metadata:
   name: sqlfmt
 spec:
   serviceName: "sqlfmt"
-  replicas: 3
+  replicas: 9
   template:
     metadata:
       labels:
@@ -26,6 +26,9 @@ spec:
         ports:
         - containerPort: 80
         - containerPort: 443
+        resources:
+          limits:
+            memory: "1G"
 ---
 apiVersion: v1
 kind: Service

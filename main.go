@@ -61,8 +61,9 @@ func main() {
 	})
 	mux.HandleFunc("/fmt", wrap(Fmt))
 	srv := &http.Server{
-		Addr:    spec.Addr,
-		Handler: mux,
+		Addr:           spec.Addr,
+		Handler:        mux,
+		MaxHeaderBytes: (1 << 10) * 200, // 200KB
 	}
 
 	if len(spec.Autocert) > 0 {
@@ -158,6 +159,12 @@ func parseBool(val string) (bool, error) {
 }
 
 func Fmt(w http.ResponseWriter, r *http.Request) []string {
+	sql := r.FormValue("sql")
+	trimmed := strings.Join(strings.Fields(sql), " ")
+	if len(trimmed) > 200 {
+		trimmed = trimmed[:200]
+	}
+	log.Printf("fmt: %s", trimmed)
 	cache.Lock()
 	hit, ok := cache.m[r.URL.RawQuery]
 	cache.Unlock()
@@ -185,7 +192,7 @@ func Fmt(w http.ResponseWriter, r *http.Request) []string {
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
-	sl, err := parser.Parse(r.FormValue("sql"))
+	sl, err := parser.Parse(sql)
 	if err != nil {
 		return []string{"error", err.Error()}
 	}
@@ -202,7 +209,7 @@ func Fmt(w http.ResponseWriter, r *http.Request) []string {
 		res[i] = pcfg.Pretty(s)
 	}
 	cache.Lock()
-	if len(cache.m) > 10000 {
+	if len(cache.m) > 1000 {
 		cache.m = make(map[string][]string)
 	}
 	cache.m[r.URL.RawQuery] = res
