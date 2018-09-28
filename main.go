@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -16,13 +17,14 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/pkg/errors"
+	flag "github.com/spf13/pflag"
 	"golang.org/x/crypto/acme/autocert"
 
-	// Initialize the builtins.
+	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	_ "github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 )
 
 type Specification struct {
@@ -32,17 +34,103 @@ type Specification struct {
 	DBCache  string
 }
 
+var (
+	prettyCfg      = tree.DefaultPrettyCfg()
+	flagPrintWidth = flag.Int("print-width", 60, "line length where sqlfmt will try to wrap")
+	flagUseSpaces  = flag.Bool("use-spaces", false, "indent with spaces instead of tabs")
+	flagTabWidth   = flag.Int("tab-width", 4, "number of spaces per indentation level")
+	flagNoSimplify = flag.Bool("no-simplify", false, "don't simplify the output")
+	flagAlign      = flag.Bool("align", false, "right-align keywords")
+	flagStmts      = flag.StringArray("stmt", nil, "instead of reading from stdin, specify statements as arguments")
+	flagHelp       = flag.BoolP("help", "h", false, "display help")
+)
+
 func main() {
+	flag.Parse()
+	if *flagHelp {
+		flag.Usage()
+		fmt.Printf(`
+
+%s runs in one of two modes.
+
+1) It takes in SQL statements from stdin or the --stmt arguments
+and formats them to stdout. This mode is enabled if the webserver is
+unconfigured.
+
+2) It runs a webserver on a specified address. This is configured by
+setting the SQLFMT_ADDR env variable to a bindable address (like ":8080"):
+
+SQLFMT_ADDR=":8080" %[1]s
+`, os.Args[0])
+		return
+	}
+
 	var spec Specification
 	err := envconfig.Process("sqlfmt", &spec)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	fmt.Printf("SPEC: %#v\n", spec)
-	if spec.Addr == "" {
-		spec.Addr = ":80"
+	if spec.Addr != "" {
+		serveHTTP(spec)
+		return
 	}
 
+	if err := runCmd(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func runCmd() error {
+	if *flagPrintWidth < 1 {
+		return errors.Errorf("line length must be > 0: %d", *flagPrintWidth)
+	}
+	if *flagTabWidth < 1 {
+		return errors.Errorf("tab width must be > 0: %d", *flagTabWidth)
+	}
+
+	var sl tree.StatementList
+	if len(*flagStmts) != 0 {
+		for _, exec := range *flagStmts {
+			stmts, err := parser.Parse(exec)
+			if err != nil {
+				return err
+			}
+			sl = append(sl, stmts...)
+		}
+	} else {
+		in, err := ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+		sl, err = parser.Parse(string(in))
+		if err != nil {
+			return err
+		}
+	}
+
+	cfg := tree.DefaultPrettyCfg()
+	cfg.UseTabs = !*flagUseSpaces
+	cfg.LineWidth = *flagPrintWidth
+	cfg.TabWidth = *flagTabWidth
+	cfg.Simplify = !*flagNoSimplify
+	cfg.Align = tree.PrettyNoAlign
+	if *flagAlign {
+		cfg.Align = tree.PrettyAlignAndDeindent
+	}
+
+	for _, s := range sl {
+		fmt.Print(cfg.Pretty(s))
+		if len(sl) > 1 {
+			fmt.Print(";")
+		}
+		fmt.Println()
+	}
+	return nil
+}
+
+func serveHTTP(spec Specification) {
+	fmt.Printf("SPEC: %#v\n", spec)
 	base := template.Must(template.New("base").Parse(Base))
 	index := template.Must(template.Must(base.Clone()).Parse(Index))
 	about := template.Must(template.Must(base.Clone()).Parse(About))
@@ -185,7 +273,7 @@ func fmtsql(r *http.Request) []string {
 	sql := r.FormValue("sql")
 	trimmed := strings.Join(strings.Fields(sql), " ")
 	if len(trimmed) > 100 {
-		trimmed = trimmed[:100]
+		trimmed = fmt.Sprintf("%s...", trimmed[:100])
 	}
 
 	n, err := strconv.Atoi(r.FormValue("n"))
