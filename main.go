@@ -145,6 +145,7 @@ func serveHTTP(spec Specification) {
 	base := template.Must(template.New("base").Parse(Base))
 	index := template.Must(template.Must(base.Clone()).Parse(Index))
 	about := template.Must(template.Must(base.Clone()).Parse(About))
+	editor := template.Must(template.Must(base.Clone()).Parse(Editor))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -155,6 +156,12 @@ func serveHTTP(spec Specification) {
 	})
 	mux.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
 		if err := about.Execute(w, nil); err != nil {
+			fmt.Println(err)
+			http.Error(w, err.Error(), 500)
+		}
+	})
+	mux.HandleFunc("/editor", func(w http.ResponseWriter, r *http.Request) {
+		if err := editor.Execute(w, nil); err != nil {
 			fmt.Println(err)
 			http.Error(w, err.Error(), 500)
 		}
@@ -363,12 +370,21 @@ a {
 </style>
 </head>
 <body>
-<h1>sequel  fumpt</h1>
 {{block "content" .}}{{end}}
 </body>
 </html>`
 
+	Editor = `{{define "content"}}
+<h1>editor configuration</h1>
+sqlfmt is available as a <a href="https://github.com/mjibson/sqlfmt/releases/latest">standalone binary</a>. You can configure your editor to run it on .sql files on save, or over selected text.
+
+<hr>
+<a href="/">index</a>
+<a href="/about">about</a>
+{{end}}`
+
 	About = `{{define "content"}}
+<h1>about</h1>
 <p>
 sqlfmt is an online SQL formatter.
 It is <a href="https://youtu.be/ytEkHepK08c?t=1m38s">pronounced</a> sequel <a href="https://twitter.com/rob_pike/status/1034957357854257152">fumpt</a>.
@@ -429,13 +445,19 @@ SELECT a
        OR d
 </pre>
 
+<h2>Background</h2>
+
+sqlfmt was inspired by <a href="https://prettier.io/">prettier</a>. It is based on <a href="http://homepages.inf.ed.ac.uk/wadler/papers/prettier/prettier.pdf">a paper</a> describing a layout algorithm. A <a href="https://www.cockroachlabs.com/blog/sql-fmt-online-sql-formatter/">blog post</a> describes a bit more.
+
 <hr>
 <a href="/">index</a>
+<a href="/editor">editor config</a>
 <br>by <a href="https://twitter.com/mjibson">@mjibson</a>
 <br>code: <a href="https://github.com/mjibson/sqlfmt">github.com/mjibson/sqlfmt</a>
 {{end}}`
 
 	Index = `{{define "content"}}
+<h1>sequel fumpt</h1>
 <p>Type some SQL. Move the slider to set output width.</p>
 
 <form name="theform" method="get" action="/fmt">
@@ -469,6 +491,7 @@ target line width: <span id="nval"></span>, actual width: <span id="actual_width
 	<pre id="fmt" style="padding: 5px 0; overflow-x: auto"></pre>
 </div>
 
+<a href="/editor">editor config</a>
 <a href="/about">about</a>
 <script>
 const textCopy = document.getElementById('text-copy');
