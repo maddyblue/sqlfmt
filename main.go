@@ -43,6 +43,13 @@ var (
 	flagAlign      = flag.Bool("align", false, "right-align keywords")
 	flagStmts      = flag.StringArray("stmt", nil, "instead of reading from stdin, specify statements as arguments")
 	flagHelp       = flag.BoolP("help", "h", false, "display help")
+	flagVersion    = flag.BoolP("version", "v", false, "display version")
+)
+
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
 
 func main() {
@@ -62,6 +69,10 @@ setting the SQLFMT_ADDR env variable to a bindable address (like ":8080"):
 
 SQLFMT_ADDR=":8080" %[1]s
 `, os.Args[0])
+		return
+	}
+	if *flagVersion {
+		fmt.Printf("sqlfmt %s\n", version)
 		return
 	}
 
