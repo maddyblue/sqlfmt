@@ -18,14 +18,13 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/cockroachdb/cockroach/pkg/sql/parser"
+	_ "github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
+	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/pkg/errors"
 	flag "github.com/spf13/pflag"
 	"golang.org/x/crypto/acme/autocert"
-
-	"github.com/cockroachdb/cockroach/pkg/sql/parser"
-	_ "github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
-	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 )
 
 type Specification struct {
@@ -156,8 +155,7 @@ func fmtsql(cfg tree.PrettyCfg, stmts []string) (string, error) {
 			}
 			// Split by semicolons
 			next := stmt
-			scan := parser.MakeScanner(stmt)
-			if pos := scan.Until(';'); pos > 0 {
+			if pos, _ := parser.SplitFirstStatement(stmt); pos > 0 {
 				next = stmt[:pos]
 				stmt = stmt[pos:]
 			} else {
@@ -169,7 +167,7 @@ func fmtsql(cfg tree.PrettyCfg, stmts []string) (string, error) {
 				return "", err
 			}
 			for _, parsed := range allParsed {
-				prettied.WriteString(cfg.Pretty(parsed))
+				prettied.WriteString(cfg.Pretty(parsed.AST))
 				prettied.WriteString(";\n")
 				hasContent = true
 			}
