@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,6 +18,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"unicode"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	_ "github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
@@ -363,6 +365,7 @@ func fmtSQLRequest(r *http.Request) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	casemode := caseModes[r.FormValue("case")]
 	spaces, err := parseBool(r.FormValue("spaces"))
 	if err != nil {
 		return "", err
@@ -374,8 +377,29 @@ func fmtSQLRequest(r *http.Request) (string, error) {
 	pcfg.TabWidth = tabWidth
 	pcfg.Simplify = simplify
 	pcfg.Align = tree.PrettyAlignMode(align)
+	pcfg.Case = casemode
 
 	return fmtsql(pcfg, []string{sql})
+}
+
+var caseModes = map[string]func(string) string{
+	"upper":     strings.ToUpper,
+	"lower":     strings.ToLower,
+	"title":     titleCase,
+	"spongebob": spongeBobCase,
+}
+
+func titleCase(s string) string {
+	return strings.Title(strings.ToLower(s))
+}
+
+func spongeBobCase(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, c := range s {
+		b.WriteRune(unicode.To(rand.Intn(2), c))
+	}
+	return b.String()
 }
 
 const (
@@ -521,6 +545,11 @@ sqlfmt was inspired by <a href="https://prettier.io/">prettier</a>. It is based 
 		<input type="radio" name="align" value="2" onChange="range()" onInput="range()" id="align2"><label for="align2">full</label>
 		<br><input type="radio" name="align" value="1" onChange="range()" onInput="range()" id="align3"><label for="align3">partial</label>
 		<input type="radio" name="align" value="3" onChange="range()" onInput="range()" id="align4"><label for="align4">other</label>
+		<br>case:
+		<br><input type="radio" name="casemode" value="upper" onChange="range()" onInput="range()" id="casemode1" checked><label for="casemode1">UPPER</label>
+		<input type="radio" name="casemode" value="lower" onChange="range()" onInput="range()" id="casemode2"><label for="casemode2">lower</label>
+		<br><input type="radio" name="casemode" value="title" onChange="range()" onInput="range()" id="casemode3"><label for="casemode3">Title</label>
+		<input type="radio" name="casemode" value="spongebob" onChange="range()" onInput="range()" id="casemode4"><label for="casemode4">sPOngEboB</label>
 		<span class="jsonly"><br><button type="button" onClick="resetVals()" id="reset">reset to defaults</button></span>
 	</div>
 </div>
@@ -545,6 +574,7 @@ const n = document.getElementById('n');
 const iw = document.getElementById('indent');
 const simplify = document.getElementById('simplify');
 const align = document.theform.align;
+const casemode = document.theform.casemode;
 const spaces = document.getElementById('spaces');
 const fmt = document.getElementById('fmt');
 const sqlEl = document.getElementById('sql');
@@ -621,16 +651,18 @@ function range() {
 	const spVal = spaces.checked ? 1 : 0;
 	const simVal = simplify.checked ? 1 : 0;
 	const alVal = align.value;
+	const caseVal = casemode.value;
 	localStorage.setItem('sql', sql);
 	localStorage.setItem('n', v);
 	localStorage.setItem('iw', viw);
 	localStorage.setItem('simplify', simVal);
 	localStorage.setItem('align', alVal);
+	localStorage.setItem('case', caseVal);
 	localStorage.setItem('spaces', spVal);
 	fmt.style["tab-size"] = viw;
 	fmt.style["-moz-tab-size"] = viw;
-	share.href = '/?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&align=' + alVal + '&sql=' + encodeURIComponent(b64EncodeUnicode(sql));
-	fetch('/fmt?json=1&n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&align=' + alVal + '&sql=' + encodeURIComponent(sql)).then(
+	share.href = '/?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&align=' + alVal + '&case=' + caseVal + '&sql=' + encodeURIComponent(b64EncodeUnicode(sql));
+	fetch('/fmt?json=1&n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&align=' + alVal + '&case=' + caseVal + '&sql=' + encodeURIComponent(sql)).then(
 		resp => {
 			working = false;
 			resp.json().then(data => {
@@ -695,6 +727,7 @@ function reloadVals() {
 	let iwVal = localStorage.getItem('iw');
 	let simVal = localStorage.getItem('simplify');
 	let alVal = localStorage.getItem('align');
+	let caseVal = localStorage.getItem('case');
 	let spVal = localStorage.getItem('spaces');
 
 	// Load predefined defaults, for each value that didn't have a default in storage.
@@ -708,6 +741,7 @@ function reloadVals() {
 	if (iwVal === null) { iwVal = 4; }
 	if (simVal === null) { simVal = 1; }
 	if (alVal === null) { alVal = 0; }
+	if (caseVal === null) { caseVal = 'upper'; }
 	if (spVal === null) { spVal = 0; }
 
 	// Override any value from the URL.
@@ -717,6 +751,7 @@ function reloadVals() {
 		if (search.has('n'))        { nVal = search.get('n'); }
 		if (search.has('indent'))   { iwVal = search.get('indent'); }
 		if (search.has('align'))    { alVal = search.get('align'); }
+		if (search.has('case'))     { caseVal = search.get('case'); }
 		if (search.has('simplify')) { simVal = search.get('simplify'); }
 		if (search.has('spaces'))   { spVal = search.get('spaces'); }
 	}
@@ -727,6 +762,7 @@ function reloadVals() {
 	iw.value = iwVal;
 	simplify.checked = !!simVal;
 	align.value = alVal;
+	casemode.value = caseVal;
 	spaces.checked = !!spVal;
 }
 
@@ -741,6 +777,7 @@ reloadVals();
 			iw.oninput = iw.onchange = range;
 			simplify.oninput = simplify.onchange = range;
 			align.oninput = simplify.oninput = range;
+			casemode.oninput = simplify.onchange = range;
 			spaces.oninput = spaces.oninput = range;
 			reset.onclick = resetVals;
 		};
@@ -752,6 +789,7 @@ reloadVals();
 		iw.oninput = iw.onchange = n.oninput;
 		simplify.oninput = simplify.onchange = n.oninput;
 		align.oninput = simplify.oninput = n.oninput;
+		casemode.oninput = simplify.oninput = n.oninput;
 		spaces.oninput = spaces.oninput = n.oninput;
 		reset.onclick = () => {
 			clearSearch();
