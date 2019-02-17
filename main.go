@@ -551,6 +551,7 @@ sqlfmt was inspired by <a href="https://prettier.io/">prettier</a>. It is based 
 		<br><input type="radio" name="casemode" value="title" onChange="range()" onInput="range()" id="casemode3"><label for="casemode3">Title</label>
 		<input type="radio" name="casemode" value="spongebob" onChange="range()" onInput="range()" id="casemode4"><label for="casemode4">sPOngEboB</label>
 		<span class="jsonly"><br><button type="button" onClick="resetVals()" id="reset">reset to defaults</button></span>
+		<span class="jsonly"><br><button type="button" onClick="clearSQL()" id="clear">clear</button></span>
 	</div>
 </div>
 
@@ -593,6 +594,11 @@ document.getElementById('copy').addEventListener('click', ev => {
 function resetVals() {
 	localStorage.clear();
 	reloadVals();
+	range();
+}
+
+function clearSQL() {
+	sqlEl.value = '';
 	range();
 }
 
