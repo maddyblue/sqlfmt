@@ -1,6 +1,6 @@
 set -ex
 
-IMG=gcr.io/hots-cockroach/sqlfmt:latest
+IMG=gcr.io/cockroach-shared/sqlfmt:latest
 
 go build -o sqlfmt
 docker build -t $IMG .

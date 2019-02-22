@@ -1,9 +1,7 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -33,7 +31,7 @@ type Specification struct {
 	Addr     string
 	Redir    string
 	Autocert []string
-	DBCache  string
+	DirCache string
 }
 
 var (
@@ -216,16 +214,10 @@ func serveHTTP(spec Specification) {
 	}
 
 	if len(spec.Autocert) > 0 {
-		db, err := sql.Open("postgres", spec.DBCache)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-		defer db.Close()
-
 		m := autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			HostPolicy: autocert.HostWhitelist(spec.Autocert...),
-			Cache:      dbCache{db},
+			Cache:      autocert.DirCache(spec.DirCache),
 		}
 		tlsConfig := &tls.Config{GetCertificate: m.GetCertificate}
 		go func() {
@@ -248,32 +240,6 @@ func serveHTTP(spec Specification) {
 	fmt.Println("closing server: got signal", sig)
 	srv.Close()
 	fmt.Println("closed server")
-}
-
-const autocertPrefix = "autocert-"
-
-type dbCache struct {
-	*sql.DB
-}
-
-func (db dbCache) Get(ctx context.Context, key string) ([]byte, error) {
-	var data []byte
-	if err := db.QueryRowContext(ctx, "SELECT s FROM config WHERE key = $1", autocertPrefix+key).Scan(&data); err == sql.ErrNoRows {
-		return nil, autocert.ErrCacheMiss
-	} else if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-func (db dbCache) Put(ctx context.Context, key string, data []byte) error {
-	_, err := db.ExecContext(ctx, "UPSERT INTO config (key, s) VALUES ($1, $2)", autocertPrefix+key, data)
-	return err
-}
-
-func (db dbCache) Delete(ctx context.Context, key string) error {
-	_, err := db.ExecContext(ctx, "DELETE FROM config WHERE key = $1", autocertPrefix+key)
-	return err
 }
 
 func wrap(f func(http.ResponseWriter, *http.Request) fmtResponse) http.HandlerFunc {
