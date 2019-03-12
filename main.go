@@ -518,6 +518,7 @@ sqlfmt was inspired by <a href="https://prettier.io/">prettier</a>. It is based 
 		<input type="radio" name="casemode" value="spongebob" onChange="range()" onInput="range()" id="casemode4"><label for="casemode4">sPOngEboB</label>
 		<span class="jsonly"><br><button type="button" onClick="resetVals()" id="reset">reset to defaults</button></span>
 		<span class="jsonly"><br><button type="button" onClick="clearSQL()" id="clear">clear</button></span>
+		<span class="jsonly"><br><input type="checkbox" onChange="autoPaste()" onInput="autoPaste()" name="paste" id="paste"><label for="paste" title="pastes from clipboard on load">auto paste</label></span>
 	</div>
 </div>
 
@@ -547,6 +548,7 @@ const fmt = document.getElementById('fmt');
 const sqlEl = document.getElementById('sql');
 const share = document.getElementById('share');
 const reset = document.getElementById('reset');
+const pasteEl = document.getElementById('paste');
 
 document.getElementById('submitButton').style.display = 'none';
 Object.values(document.getElementsByClassName('jsonly')).forEach(v => v.style.display = 'inline');
@@ -739,6 +741,19 @@ function reloadVals() {
 }
 
 reloadVals();
+
+pasteEl.checked = localStorage.getItem('paste') === 1;
+function autoPaste() {
+	const p = pasteEl.checked ? 1 : 0;
+	localStorage.setItem('paste', p);
+	if (p) {
+		navigator.clipboard.readText().then(clipText => {
+			sqlEl.value = clipText;
+			range();
+		});
+	}
+}
+autoPaste();
 
 (() => {
 	if (location.search) {
