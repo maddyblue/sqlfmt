@@ -742,7 +742,7 @@ function reloadVals() {
 
 reloadVals();
 
-pasteEl.checked = localStorage.getItem('paste') === 1;
+pasteEl.checked = localStorage.getItem('paste') === '1';
 function autoPaste() {
 	const p = pasteEl.checked ? 1 : 0;
 	localStorage.setItem('paste', p);
