@@ -144,7 +144,7 @@ func fmtsql(cfg tree.PrettyCfg, stmts []string) (string, error) {
 					break
 				}
 				// Remove trailing whitespace but keep up to 2 newlines.
-				prettied.WriteString(strings.TrimSpace(found))
+				prettied.WriteString(strings.TrimRightFunc(found, unicode.IsSpace))
 				newlines := strings.Count(found, "\n")
 				if newlines > 2 {
 					newlines = 2
@@ -177,7 +177,7 @@ func fmtsql(cfg tree.PrettyCfg, stmts []string) (string, error) {
 		}
 	}
 
-	return strings.TrimSpace(prettied.String()), nil
+	return strings.TrimRightFunc(prettied.String(), unicode.IsSpace), nil
 }
 
 func serveHTTP(spec Specification) {
