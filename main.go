@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -36,11 +35,10 @@ type Specification struct {
 
 var (
 	prettyCfg      = tree.DefaultPrettyCfg()
+	flagExpanded   = flag.Bool("expanded", false, "use a verbose, expansive format")
 	flagPrintWidth = flag.Int("print-width", 60, "line length where sqlfmt will try to wrap")
 	flagUseSpaces  = flag.Bool("use-spaces", false, "indent with spaces instead of tabs")
 	flagTabWidth   = flag.Int("tab-width", 4, "number of spaces per indentation level")
-	flagNoSimplify = flag.Bool("no-simplify", false, "don't simplify the output")
-	flagAlign      = flag.Bool("align", false, "right-align keywords")
 	flagStmts      = flag.StringArray("stmt", nil, "instead of reading from stdin, specify statements as arguments")
 	flagHelp       = flag.BoolP("help", "h", false, "display help")
 	flagVersion    = flag.BoolP("version", "v", false, "display version")
@@ -113,9 +111,11 @@ func runCmd() error {
 	cfg.UseTabs = !*flagUseSpaces
 	cfg.LineWidth = *flagPrintWidth
 	cfg.TabWidth = *flagTabWidth
-	cfg.Simplify = !*flagNoSimplify
-	cfg.Align = tree.PrettyNoAlign
-	if *flagAlign {
+	if *flagExpanded {
+		cfg.Simplify = false
+		cfg.Align = tree.PrettyNoAlign
+	} else {
+		cfg.Simplify = false
 		cfg.Align = tree.PrettyAlignAndDeindent
 	}
 
@@ -323,15 +323,10 @@ func fmtSQLRequest(r *http.Request) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	simplify, err := parseBool(r.FormValue("simplify"))
+	expanded, err := parseBool(r.FormValue("expanded"))
 	if err != nil {
 		return "", err
 	}
-	align, err := strconv.Atoi(r.FormValue("align"))
-	if err != nil {
-		return "", err
-	}
-	casemode := caseModes[r.FormValue("case")]
 	spaces, err := parseBool(r.FormValue("spaces"))
 	if err != nil {
 		return "", err
@@ -341,31 +336,16 @@ func fmtSQLRequest(r *http.Request) (string, error) {
 	pcfg.LineWidth = n
 	pcfg.UseTabs = !spaces
 	pcfg.TabWidth = tabWidth
-	pcfg.Simplify = simplify
-	pcfg.Align = tree.PrettyAlignMode(align)
-	pcfg.Case = casemode
+	pcfg.Case = strings.ToUpper
 
-	return fmtsql(pcfg, []string{sql})
-}
-
-var caseModes = map[string]func(string) string{
-	"upper":     strings.ToUpper,
-	"lower":     strings.ToLower,
-	"title":     titleCase,
-	"spongebob": spongeBobCase,
-}
-
-func titleCase(s string) string {
-	return strings.Title(strings.ToLower(s))
-}
-
-func spongeBobCase(s string) string {
-	var b strings.Builder
-	b.Grow(len(s))
-	for _, c := range s {
-		b.WriteRune(unicode.To(rand.Intn(2), c))
+	if expanded {
+		pcfg.Simplify = false
+		pcfg.Align = tree.PrettyNoAlign
+	} else {
+		pcfg.Simplify = true
+		pcfg.Align = tree.PrettyAlignAndDeindent
 	}
-	return b.String()
+	return fmtsql(pcfg, []string{sql})
 }
 
 const (
@@ -435,11 +415,21 @@ Its purpose is to beautifully format SQL statements.
 
 <h2>Usage</h2>
 
-<p>There is a box in which to paste or type SQL statements. Multiple statements are supported by separating them with a semicolon (<code>;</code>). The slider below the box controls the desired maximum line width in characters. Various options on the side control tab/indentation width, the use of spaces or tabs, simplification, and alignment modes. Simplification causes the formatter to remove unneeded parentheses and words when the meaning will be the same without them.</p>
+<p>There is a box in which to paste or type SQL statements. Multiple statements are supported by separating them with a semicolon (<code>;</code>). The slider below the box controls the desired maximum line width in characters. Various options on the side control tab/indentation width, and the use of spaces or tabs.</p>
 
-<p>There are four alignment modes. The default, <code>no</code>, uses left alignment. <code>partial</code> right aligns keywords at the width of the longest keyword at the beginning of all lines immediately below. <code>full</code> is the same as <code>partial</code> but the keywords <code>AND</code> and <code>OR</code> are deindented, in a style similar to the sqlite tests. <code>other</code> is like <code>partial</code> but instead of deindenting <code>AND</code> and <code>OR</code>, their arguments are instead indented.</p>
+<p>There are two formatting modes. The default "compact" format, simplifies expressions and collapses clauses using alignment to clarify between clauses.
+The "expanded" format avoids simplifying expressions and reveals the full structure of SQL queries.</p>
 
-<h3>no:</h3>
+<h3>compact:</h3>
+<pre>
+SELECT a
+  FROM t
+ WHERE c
+   AND b
+    OR d
+</pre>
+
+<h3>expanded:</h3>
 <pre>
 SELECT
     a
@@ -449,34 +439,6 @@ WHERE
     c
     AND b
     OR d
-</pre>
-
-<h3>partial:</h3>
-<pre>
-SELECT a
-  FROM t
- WHERE c
-       AND b
-       OR d
-</pre>
-
-<h3>full:</h3>
-<pre>
-SELECT a
-  FROM t
- WHERE c
-   AND b
-    OR d
-</pre>
-
-<h3>other:</h3>
-<pre>
-SELECT a
-  FROM t
- WHERE    c
-          AND
-            b
-       OR d
 </pre>
 
 <h2>Background</h2>
@@ -504,18 +466,8 @@ sqlfmt was inspired by <a href="https://prettier.io/">prettier</a>. It is based 
 		<h4 style="margin: 0">options:</h4>
 		<label title="tab/indent width" for="iw">tab width</label>
 		<input type="number" min="1" max="16" step="1" name="indent" value="4" onChange="range()" onInput="range()" id="indent">
-		<br><input type="checkbox" checked="1" onChange="range()" onInput="range()" name="simplify" id="simplify"><label for="simplify" title="simplify parentheses">simplify</label>
 		<br><input type="checkbox" checked="0" onChange="range()" onInput="range()" name="spaces" id="spaces"><label for="spaces" title="use spaces instead of tabs">use spaces</label>
-		<br>alignment mode:
-		<br><input type="radio" name="align" value="0" onChange="range()" onInput="range()" id="align1" checked><label for="align1">no</label>
-		<input type="radio" name="align" value="2" onChange="range()" onInput="range()" id="align2"><label for="align2">full</label>
-		<br><input type="radio" name="align" value="1" onChange="range()" onInput="range()" id="align3"><label for="align3">partial</label>
-		<input type="radio" name="align" value="3" onChange="range()" onInput="range()" id="align4"><label for="align4">other</label>
-		<br>case:
-		<br><input type="radio" name="casemode" value="upper" onChange="range()" onInput="range()" id="casemode1" checked><label for="casemode1">UPPER</label>
-		<input type="radio" name="casemode" value="lower" onChange="range()" onInput="range()" id="casemode2"><label for="casemode2">lower</label>
-		<br><input type="radio" name="casemode" value="title" onChange="range()" onInput="range()" id="casemode3"><label for="casemode3">Title</label>
-		<input type="radio" name="casemode" value="spongebob" onChange="range()" onInput="range()" id="casemode4"><label for="casemode4">sPOngEboB</label>
+		<br><input type="checkbox" checked="1" onChange="range()" onInput="range()" name="expanded" id="expanded"><label for="expanded" title="use expanded mode">expanded</label>
 		<span class="jsonly"><br><button type="button" onClick="resetVals()" id="reset">reset to defaults</button></span>
 		<span class="jsonly"><br><button type="button" onClick="clearSQL()" id="clear">clear</button></span>
 		<span class="jsonly"><br><input type="checkbox" onChange="autoPaste()" onInput="autoPaste()" name="paste" id="paste"><label for="paste" title="pastes from clipboard on load">auto paste</label></span>
@@ -540,9 +492,7 @@ const actualWidth = document.getElementById('actual_width');
 const actualBytes = document.getElementById('actual_bytes');
 const n = document.getElementById('n');
 const iw = document.getElementById('indent');
-const simplify = document.getElementById('simplify');
-const align = document.theform.align;
-const casemode = document.theform.casemode;
+const expanded = document.getElementById('expanded');
 const spaces = document.getElementById('spaces');
 const fmt = document.getElementById('fmt');
 const sqlEl = document.getElementById('sql');
@@ -623,20 +573,16 @@ function range() {
 	const viw = iw.value;
 	const sql = sqlEl.value;
 	const spVal = spaces.checked ? 1 : 0;
-	const simVal = simplify.checked ? 1 : 0;
-	const alVal = align.value;
-	const caseVal = casemode.value;
+	const expVal = expanded.checked ? 1 : 0;
 	localStorage.setItem('sql', sql);
 	localStorage.setItem('n', v);
 	localStorage.setItem('iw', viw);
-	localStorage.setItem('simplify', simVal);
-	localStorage.setItem('align', alVal);
-	localStorage.setItem('case', caseVal);
+	localStorage.setItem('expanded', expVal);
 	localStorage.setItem('spaces', spVal);
 	fmt.style["tab-size"] = viw;
 	fmt.style["-moz-tab-size"] = viw;
-	share.href = '/?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&align=' + alVal + '&case=' + caseVal + '&sql=' + encodeURIComponent(b64EncodeUnicode(sql));
-	fetch('/fmt?json=1&n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&simplify=' + simVal + '&align=' + alVal + '&case=' + caseVal + '&sql=' + encodeURIComponent(sql)).then(
+	share.href = '/?n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&expanded=' + expVal + '&sql=' + encodeURIComponent(b64EncodeUnicode(sql));
+	fetch('/fmt?json=1&n=' + v + '&indent=' + viw + '&spaces=' + spVal + '&expanded=' + expVal + '&sql=' + encodeURIComponent(sql)).then(
 		resp => {
 			working = false;
 			resp.json().then(data => {
@@ -699,9 +645,7 @@ function reloadVals() {
 	let sql = localStorage.getItem('sql');
 	let nVal = localStorage.getItem('n');
 	let iwVal = localStorage.getItem('iw');
-	let simVal = localStorage.getItem('simplify');
-	let alVal = localStorage.getItem('align');
-	let caseVal = localStorage.getItem('case');
+	let expVal = localStorage.getItem('expanded');
 	let spVal = localStorage.getItem('spaces');
 
 	// Load predefined defaults, for each value that didn't have a default in storage.
@@ -713,9 +657,7 @@ function reloadVals() {
 	}
 	if (nVal === null) { nVal = 60; }
 	if (iwVal === null) { iwVal = 4; }
-	if (simVal === null) { simVal = 1; }
-	if (alVal === null) { alVal = 0; }
-	if (caseVal === null) { caseVal = 'upper'; }
+	if (expVal === null) { expVal = 1; }
 	if (spVal === null) { spVal = 0; }
 
 	// Override any value from the URL.
@@ -724,9 +666,7 @@ function reloadVals() {
 		if (search.has('sql'))      { sql = b64DecodeUnicode(search.get('sql'));	}
 		if (search.has('n'))        { nVal = search.get('n'); }
 		if (search.has('indent'))   { iwVal = search.get('indent'); }
-		if (search.has('align'))    { alVal = search.get('align'); }
-		if (search.has('case'))     { caseVal = search.get('case'); }
-		if (search.has('simplify')) { simVal = search.get('simplify'); }
+		if (search.has('expanded')) { simVal = search.get('expanded'); }
 		if (search.has('spaces'))   { spVal = search.get('spaces'); }
 	}
 
@@ -734,9 +674,7 @@ function reloadVals() {
 	sqlEl.value = sql;
 	n.value = nVal;
 	iw.value = iwVal;
-	simplify.checked = !!simVal;
-	align.value = alVal;
-	casemode.value = caseVal;
+	expanded.checked = !!expVal;
 	spaces.checked = !!spVal;
 }
 
@@ -762,9 +700,7 @@ autoPaste();
 			sqlEl.onkeydown = null;
 			n.oninput = n.onchange = range;
 			iw.oninput = iw.onchange = range;
-			simplify.oninput = simplify.onchange = range;
-			align.oninput = simplify.oninput = range;
-			casemode.oninput = simplify.onchange = range;
+			expanded.oninput = expanded.onchange = range;
 			spaces.oninput = spaces.oninput = range;
 			reset.onclick = resetVals;
 		};
@@ -774,9 +710,7 @@ autoPaste();
 			range();
 		};
 		iw.oninput = iw.onchange = n.oninput;
-		simplify.oninput = simplify.onchange = n.oninput;
-		align.oninput = simplify.oninput = n.oninput;
-		casemode.oninput = simplify.oninput = n.oninput;
+		expanded.oninput = expanded.onchange = n.oninput;
 		spaces.oninput = spaces.oninput = n.oninput;
 		reset.onclick = () => {
 			clearSearch();
