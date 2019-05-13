@@ -694,6 +694,11 @@ function b64DecodeUnicode(str) {
 	);
 }
 
+let search;
+if (location.search) {
+	search = new URLSearchParams(location.search);
+}
+
 function reloadVals() {
 	// Load initial defaults from storage.
 	let sql = localStorage.getItem('sql');
@@ -719,8 +724,7 @@ function reloadVals() {
 	if (spVal === null) { spVal = 0; }
 
 	// Override any value from the URL.
-	if (location.search) {
-		const search = new URLSearchParams(location.search);
+	if (search) {
 		if (search.has('sql'))      { sql = b64DecodeUnicode(search.get('sql'));	}
 		if (search.has('n'))        { nVal = search.get('n'); }
 		if (search.has('indent'))   { iwVal = search.get('indent'); }
@@ -753,7 +757,10 @@ function autoPaste() {
 		});
 	}
 }
-autoPaste();
+
+if (!search || !search.has('sql')) {
+	autoPaste();
+}
 
 (() => {
 	if (location.search) {
