@@ -1,4 +1,3 @@
-FROM ubuntu:xenial-20170915
-RUN apt-get update && apt-get install -y ca-certificates && apt-get clean
+FROM golang:1.12
 ADD sqlfmt /
 CMD ["/sqlfmt"]
