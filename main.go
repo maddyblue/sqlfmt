@@ -401,6 +401,19 @@ a {
 .jsonly {
 	display: none;
 }
+@media (prefers-color-scheme: dark) {
+	body {
+		color: #ffffff;
+		background-color: #121212;
+	}
+	a {
+		color: #bb86cf;
+	}
+	textarea, input, button, .full-width {
+		color: #ffffff;
+		background: rgba(255, 255, 255, 0.14);
+	}
+}
 </style>
 </head>
 <body>
