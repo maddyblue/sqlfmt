@@ -376,10 +376,71 @@ const (
 <link href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4gYRBwgDpCIYRAAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAACiElEQVRYw+2XPWsyQRDHfX8Dq1iILyBBVDSVoFiLWogWJpAikkpiISJim0+gIgh+hBRBEBFCwEIURYQU6bS0CBYRJeALRBKCE3bhFu8xnt4ZnmsysLfc/2aOn3uzM6sAeDYBujw9PUE4HAaDwQBSqRSMRiNcX19Dp9PZClitVnB7ewsmkwlkMhme0T3SaS8WCMhgBKhWqyASiWgBTMGhUOhHP/QDOAGcnZ0Rx3w+D+/v7zAcDiEWi20FPzw8EN/z83NYLBZ4prTHx0f2AHK5nDgOBgPaw1wuR7u/uroivq1WC2vNZpNo0WiUPYDVaiWOTqcTGo0GrNfrH50tFgvxHY/HWHt9fSWazWZjD3B/fw9CoZAWgJKxUCjgz7FpKpWK+Hx+fmLt4+ODaGq1mj0AurTbbfB6vVsgaEWm0ylx3kxWapXQTGkSiYQbAGUvLy+QzWZBo9GQ4Hg8fvAKnJycHAdAWbfbJcFarZboZrOZMQccDgd7gFQqBV9fXzQRbS8qGBUbyi4vLxl3QSKRYA9AfetarQaz2Qze3t4gnU6TYLvdTpwrlQrRLy4utupAr9fjBrBroKQsl8vEGSUcStaffJPJ5M5KyFRlBYj65uYGUD1QKBS4F+h0OohEInh5/7XlcgmZTAb0ej3ZFaenpzCfz7kBHNPJUANyu92kCI1GI27d8BhDu8DlcsHd3R33dsz7eYBXgEOTZTOxgsEg7SV+v3+n794k5AKAav5kMsEaqohisfh3AA5YLjJKpRLWisXi3qLD9JwzgMfjwRq1Df87gFKphHq9jovXrwHsO5Ru6oFAAHdKn8/HDwA6MaEZnR94+QT9fh/Pz8/P/ACw+Q/wB/AHwAjAdzf8BhzwU5PzE5t1AAAAAElFTkSuQmCC" rel="icon" type="image/png">
 <title>sequel  fumpt</title>
 <style>
+:root {
+  --primary: #6200ee;
+  --variant: #3700b3;
+  --secondary: #03dac6;
+  --secondary-variant: #018786;
+  --background: #ffffff;
+  --surface: #ffffff;
+  --error: #b00020;
+  --on-primary: #ffffff;
+  --on-secondary: #000000;
+  --on-background: #000000;
+  --on-surface: #000000;
+  --on-error: #ffffff;
+  --dp00: #ffffff;
+  --dp01: #f2f2f2;
+  --dp02: #ededed;
+  --dp03: #ebebeb;
+  --dp04: #e8e8e8;
+  --dp06: #e3e3e3;
+  --dp08: #e0e0e0;
+  --dp12: #dbdbdb;
+  --dp16: #d9d9d9;
+  --dp24: #d6d6d6;
+  --emph-high: #212121;
+  --emph-medium: #666666;
+  --disabled: #9e9e9e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #bb86fc;
+    --variant: #3700b3;
+    --secondary: #03dac6;
+    --secondary-variant: #03dac6;
+    --background: #121212;
+    --surface: #121212;
+    --error: #cf6679;
+    --on-primary: #000000;
+    --on-secondary: #000000;
+    --on-background: #ffffff;
+    --on-surface: #ffffff;
+    --on-error: #000000;
+    --dp00: #121212;
+    --dp01: #1e1e1e;
+    --dp02: #232323;
+    --dp03: #252525;
+    --dp04: #272727;
+    --dp06: #2c2c2c;
+    --dp08: #2e2e2e;
+    --dp12: #333333;
+    --dp16: #363636;
+    --dp24: #383838;
+    --emph-high: #e0e0e0;
+    --emph-medium: #a0a0a0;
+    --disabled: #6c6c6c;
+  }
+}
+body {
+  color: var(--emph-high);
+  background-color: var(--background);
+}
+</style>
+<style>
 body {
 	margin: 0;
 	padding: 8px;
-	color: #303030;
 	font-size: 1rem;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
@@ -391,28 +452,19 @@ html, body {
 	overflow-x: hidden;
 }
 a {
-	color: #268bd2;
+	color: var(--primary);
 }
 .full-width {
 	margin: 10px -9999rem;
 	padding: 0 9999rem;
-	background: rgba(0, 0, 0, 0.05);
+	background: var(--dp04);
 }
 .jsonly {
 	display: none;
 }
-@media (prefers-color-scheme: dark) {
-	body {
-		color: #ffffff;
-		background-color: #121212;
-	}
-	a {
-		color: #bb86cf;
-	}
-	textarea, input, button, .full-width {
-		color: #ffffff;
-		background: rgba(255, 255, 255, 0.14);
-	}
+textarea {
+	color: var(--emph-high);
+	background: var(--surface);
 }
 </style>
 </head>
