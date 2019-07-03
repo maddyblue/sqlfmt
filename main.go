@@ -39,6 +39,7 @@ var (
 	flagPrintWidth = flag.Int("print-width", 60, "line length where sqlfmt will try to wrap")
 	flagUseSpaces  = flag.Bool("use-spaces", false, "indent with spaces instead of tabs")
 	flagTabWidth   = flag.Int("tab-width", 4, "number of spaces per indentation level")
+	flagCasemode   = flag.String("casemode", "upper", "keyword casing, can be: upper, lower, title, spongebob")
 	flagNoSimplify = flag.Bool("no-simplify", false, "don't simplify the output")
 	flagAlign      = flag.Bool("align", false, "right-align keywords")
 	flagStmts      = flag.StringArray("stmt", nil, "instead of reading from stdin, specify statements as arguments")
@@ -99,6 +100,9 @@ func runCmd() error {
 	if *flagTabWidth < 1 {
 		return errors.Errorf("tab width must be > 0: %d", *flagTabWidth)
 	}
+	if *flagCasemode != "" && caseModes[*flagCasemode] == nil {
+		return errors.Errorf("unknown casemode: %s", *flagCasemode)
+	}
 
 	sl := *flagStmts
 	if len(sl) == 0 {
@@ -115,6 +119,7 @@ func runCmd() error {
 	cfg.TabWidth = *flagTabWidth
 	cfg.Simplify = !*flagNoSimplify
 	cfg.Align = tree.PrettyNoAlign
+	cfg.Case = caseModes[*flagCasemode]
 	if *flagAlign {
 		cfg.Align = tree.PrettyAlignAndDeindent
 	}
