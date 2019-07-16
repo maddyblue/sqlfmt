@@ -567,7 +567,7 @@ sqlfmt was inspired by <a href="https://prettier.io/">prettier</a>. It is based 
 <form name="theform" method="get" action="/fmt">
 <div style="display: flex; flex-wrap: wrap">
 	<div style="flex: 1; margin-right: 4px">
-		<textarea id="sql" name="sql" style="box-sizing: border-box; width: 100%; height: 200px" onChange="range()" onInput="range()"></textarea>
+		<textarea id="sql" name="sql" spellcheck="false" style="box-sizing: border-box; width: 100%; height: 200px" onChange="range()" onInput="range()"></textarea>
 		<input type="range" min="1" max="200" step="1" name="n" value="40" onChange="range()" onInput="range()" id="n" style="width: 100%">
 	</div>
 	<div style="width: 150px">
