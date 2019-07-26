@@ -774,10 +774,10 @@ function reloadVals() {
 	let sql = localStorage.getItem('sql');
 	let nVal = localStorage.getItem('n');
 	let iwVal = localStorage.getItem('iw');
-	let simVal = localStorage.getItem('simplify');
+	let simVal = localStorage.getItem('simplify') === '1' ? 1 : 0;
 	let alVal = localStorage.getItem('align');
 	let caseVal = localStorage.getItem('case');
-	let spVal = localStorage.getItem('spaces');
+	let spVal = localStorage.getItem('spaces') === '1' ? 1 : 0;
 
 	// Load predefined defaults, for each value that didn't have a default in storage.
 	if (sql === null) {
