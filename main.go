@@ -2,7 +2,7 @@ package main
 
 import (
 	"crypto/tls"
-	"encoding/json"
+	gojson "encoding/json"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -21,6 +21,8 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	_ "github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/util/json"
+	"github.com/cockroachdb/cockroach/pkg/util/pretty"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/pkg/errors"
 	flag "github.com/spf13/pflag"
@@ -35,7 +37,6 @@ type Specification struct {
 }
 
 var (
-	prettyCfg      = tree.DefaultPrettyCfg()
 	flagPrintWidth = flag.Int("print-width", 60, "line length where sqlfmt will try to wrap")
 	flagUseSpaces  = flag.Bool("use-spaces", false, "indent with spaces instead of tabs")
 	flagTabWidth   = flag.Int("tab-width", 4, "number of spaces per indentation level")
@@ -120,6 +121,7 @@ func runCmd() error {
 	cfg.Simplify = !*flagNoSimplify
 	cfg.Align = tree.PrettyNoAlign
 	cfg.Case = caseModes[*flagCasemode]
+	cfg.JSONFmt = true
 	if *flagAlign {
 		cfg.Align = tree.PrettyAlignAndDeindent
 	}
@@ -255,7 +257,7 @@ func wrap(f func(http.ResponseWriter, *http.Request) fmtResponse) http.HandlerFu
 			w.Write([]byte(res.Data))
 		} else {
 			w.Header().Add("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(res); err != nil {
+			if err := gojson.NewEncoder(w).Encode(res); err != nil {
 				log.Print(err)
 			}
 		}
@@ -349,8 +351,60 @@ func fmtSQLRequest(r *http.Request) (string, error) {
 	pcfg.Simplify = simplify
 	pcfg.Align = tree.PrettyAlignMode(align)
 	pcfg.Case = casemode
+	pcfg.JSONFmt = true
 
-	return fmtsql(pcfg, []string{sql})
+	res, err := fmtsql(pcfg, []string{sql})
+	if err == nil {
+		return res, nil
+	}
+	if jsonDoc, jErr := fmtJSON(sql); jErr == nil && jsonDoc != nil {
+		resJSON := pretty.Pretty(jsonDoc, pcfg.LineWidth, pcfg.UseTabs, pcfg.TabWidth, nil)
+		return resJSON, nil
+	}
+	return res, err
+}
+
+func fmtJSON(s string) (pretty.Doc, error) {
+	j, err := json.ParseJSON(s)
+	if err != nil {
+		return nil, err
+	}
+	return fmtJSONNode(j), nil
+}
+
+func fmtJSONNode(j json.JSON) pretty.Doc {
+	// Figure out what type this is.
+	if it, _ := j.ObjectIter(); it != nil {
+		// Object.
+		elems := make([]pretty.Doc, 0, j.Len())
+		for it.Next() {
+			elems = append(elems, pretty.NestUnder(
+				pretty.Concat(
+					pretty.Text(json.FromString(it.Key()).String()),
+					pretty.Text(`:`),
+				),
+				fmtJSONNode(it.Value()),
+			))
+		}
+		return prettyBracket("{", elems, "}")
+	} else if n := j.Len(); n > 0 {
+		// Non-empty array.
+		elems := make([]pretty.Doc, n)
+		for i := 0; i < n; i++ {
+			elem, err := j.FetchValIdx(i)
+			if err != nil {
+				return pretty.Text(j.String())
+			}
+			elems[i] = fmtJSONNode(elem)
+		}
+		return prettyBracket("[", elems, "]")
+	}
+	// Other.
+	return pretty.Text(j.String())
+}
+
+func prettyBracket(l string, elems []pretty.Doc, r string) pretty.Doc {
+	return pretty.BracketDoc(pretty.Text(l), pretty.Join(",", elems...), pretty.Text(r))
 }
 
 var caseModes = map[string]func(string) string{
