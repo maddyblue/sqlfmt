@@ -1,3 +1,3 @@
-FROM golang:1.13
+FROM golang:1.19
 ADD sqlfmt /
 CMD ["/sqlfmt"]
