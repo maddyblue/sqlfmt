@@ -18,14 +18,13 @@ import (
 	"syscall"
 	"unicode"
 
-	"github.com/cockroachdb/cockroachdb-parser/pkg/sql/parser"
 	"github.com/cockroachdb/cockroachdb-parser/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroachdb-parser/pkg/util/json"
 	"github.com/cockroachdb/cockroachdb-parser/pkg/util/pretty"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/pkg/errors"
 	flag "github.com/spf13/pflag"
 	"golang.org/x/crypto/acme/autocert"
+
+	"github.com/mjibson/sqlfmt"
 )
 
 type Specification struct {
@@ -95,13 +94,13 @@ SQLFMT_ADDR=":8080" %[1]s
 
 func runCmd() error {
 	if *flagPrintWidth < 1 {
-		return errors.Errorf("line length must be > 0: %d", *flagPrintWidth)
+		return fmt.Errorf("line length must be > 0: %d", *flagPrintWidth)
 	}
 	if *flagTabWidth < 1 {
-		return errors.Errorf("tab width must be > 0: %d", *flagTabWidth)
+		return fmt.Errorf("tab width must be > 0: %d", *flagTabWidth)
 	}
 	if *flagCasemode != "" && caseModes[*flagCasemode] == nil {
-		return errors.Errorf("unknown casemode: %s", *flagCasemode)
+		return fmt.Errorf("unknown casemode: %s", *flagCasemode)
 	}
 
 	sl := *flagStmts
@@ -125,7 +124,7 @@ func runCmd() error {
 		cfg.Align = tree.PrettyAlignAndDeindent
 	}
 
-	res, err := fmtsql(cfg, sl)
+	res, err := sqlfmt.FmtSQL(cfg, sl)
 	if err != nil {
 		return err
 	}
@@ -136,55 +135,6 @@ func runCmd() error {
 var (
 	ignoreComments = regexp.MustCompile(`^--.*\s*`)
 )
-
-func fmtsql(cfg tree.PrettyCfg, stmts []string) (string, error) {
-	var prettied strings.Builder
-	for _, stmt := range stmts {
-		for len(stmt) > 0 {
-			stmt = strings.TrimSpace(stmt)
-			hasContent := false
-			// Trim comments, preserving whitespace after them.
-			for {
-				found := ignoreComments.FindString(stmt)
-				if found == "" {
-					break
-				}
-				// Remove trailing whitespace but keep up to 2 newlines.
-				prettied.WriteString(strings.TrimRightFunc(found, unicode.IsSpace))
-				newlines := strings.Count(found, "\n")
-				if newlines > 2 {
-					newlines = 2
-				}
-				prettied.WriteString(strings.Repeat("\n", newlines))
-				stmt = stmt[len(found):]
-				hasContent = true
-			}
-			// Split by semicolons
-			next := stmt
-			if pos, _ := parser.SplitFirstStatement(stmt); pos > 0 {
-				next = stmt[:pos]
-				stmt = stmt[pos:]
-			} else {
-				stmt = ""
-			}
-			// This should only return 0 or 1 responses.
-			allParsed, err := parser.Parse(next)
-			if err != nil {
-				return "", err
-			}
-			for _, parsed := range allParsed {
-				prettied.WriteString(cfg.Pretty(parsed.AST))
-				prettied.WriteString(";\n")
-				hasContent = true
-			}
-			if hasContent {
-				prettied.WriteString("\n")
-			}
-		}
-	}
-
-	return strings.TrimRightFunc(prettied.String(), unicode.IsSpace), nil
-}
 
 func serveHTTP(spec Specification) {
 	fmt.Printf("SPEC: %#v\n", spec)
@@ -352,58 +302,15 @@ func fmtSQLRequest(r *http.Request) (string, error) {
 	pcfg.Case = casemode
 	pcfg.JSONFmt = true
 
-	res, err := fmtsql(pcfg, []string{sql})
+	res, err := sqlfmt.FmtSQL(pcfg, []string{sql})
 	if err == nil {
 		return res, nil
 	}
-	if jsonDoc, jErr := fmtJSON(sql); jErr == nil && jsonDoc != nil {
+	if jsonDoc, jErr := sqlfmt.FmtJSON(sql); jErr == nil && jsonDoc != nil {
 		resJSON := pretty.Pretty(jsonDoc, pcfg.LineWidth, pcfg.UseTabs, pcfg.TabWidth, nil)
 		return resJSON, nil
 	}
 	return res, err
-}
-
-func fmtJSON(s string) (pretty.Doc, error) {
-	j, err := json.ParseJSON(s)
-	if err != nil {
-		return nil, err
-	}
-	return fmtJSONNode(j), nil
-}
-
-func fmtJSONNode(j json.JSON) pretty.Doc {
-	// Figure out what type this is.
-	if it, _ := j.ObjectIter(); it != nil {
-		// Object.
-		elems := make([]pretty.Doc, 0, j.Len())
-		for it.Next() {
-			elems = append(elems, pretty.NestUnder(
-				pretty.Concat(
-					pretty.Text(json.FromString(it.Key()).String()),
-					pretty.Text(`:`),
-				),
-				fmtJSONNode(it.Value()),
-			))
-		}
-		return prettyBracket("{", elems, "}")
-	} else if n := j.Len(); n > 0 {
-		// Non-empty array.
-		elems := make([]pretty.Doc, n)
-		for i := 0; i < n; i++ {
-			elem, err := j.FetchValIdx(i)
-			if err != nil {
-				return pretty.Text(j.String())
-			}
-			elems[i] = fmtJSONNode(elem)
-		}
-		return prettyBracket("[", elems, "]")
-	}
-	// Other.
-	return pretty.Text(j.String())
-}
-
-func prettyBracket(l string, elems []pretty.Doc, r string) pretty.Doc {
-	return pretty.BracketDoc(pretty.Text(l), pretty.Join(",", elems...), pretty.Text(r))
 }
 
 var caseModes = map[string]func(string) string{

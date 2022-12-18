@@ -1,11 +1,10 @@
-module github.com/cockroachdb/sqlfmt
+module github.com/mjibson/sqlfmt
 
 go 1.19
 
 require (
 	github.com/cockroachdb/cockroachdb-parser v0.0.0-20221028200933-9747fdca0317
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8
 )
@@ -29,6 +28,7 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/petermattis/goid v0.0.0-20211229010228-4d14c490ee36 // indirect
 	github.com/pierrre/geohash v1.0.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	github.com/twpayne/go-geom v1.4.2 // indirect
