@@ -240,8 +240,7 @@
         document.body.removeChild(textArea);
       }
       function range() {
-        if (!globalThis.FromSQL) {
-          console.log("waiting for FromSQL");
+        if (!globalThis.FmtSQL) {
           setTimeout(range, 100);
           return;
         }
@@ -254,7 +253,7 @@
           "/?n=" + v + "&sql=" + encodeURIComponent(b64EncodeUnicode(sql));
 
         try {
-          fmtText = FmtSQL(sql, v);
+          fmtText = globalThis.FmtSQL(sql, v);
           actualWidth.innerText = Math.max(
             ...fmtText.split("\n").map((v) => v.length)
           );
