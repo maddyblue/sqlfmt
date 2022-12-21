@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <script src="wasm_exec.js"></script>
+    <script>
+      const go = new Go();
+      WebAssembly.instantiateStreaming(
+        fetch("sqlfmt.wasm"),
+        go.importObject
+      ).then((result) => {
+        go.run(result.instance);
+      });
+    </script>
+    <link
+      href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4gYRBwgDpCIYRAAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAACiElEQVRYw+2XPWsyQRDHfX8Dq1iILyBBVDSVoFiLWogWJpAikkpiISJim0+gIgh+hBRBEBFCwEIURYQU6bS0CBYRJeALRBKCE3bhFu8xnt4ZnmsysLfc/2aOn3uzM6sAeDYBujw9PUE4HAaDwQBSqRSMRiNcX19Dp9PZClitVnB7ewsmkwlkMhme0T3SaS8WCMhgBKhWqyASiWgBTMGhUOhHP/QDOAGcnZ0Rx3w+D+/v7zAcDiEWi20FPzw8EN/z83NYLBZ4prTHx0f2AHK5nDgOBgPaw1wuR7u/uroivq1WC2vNZpNo0WiUPYDVaiWOTqcTGo0GrNfrH50tFgvxHY/HWHt9fSWazWZjD3B/fw9CoZAWgJKxUCjgz7FpKpWK+Hx+fmLt4+ODaGq1mj0AurTbbfB6vVsgaEWm0ylx3kxWapXQTGkSiYQbAGUvLy+QzWZBo9GQ4Hg8fvAKnJycHAdAWbfbJcFarZboZrOZMQccDgd7gFQqBV9fXzQRbS8qGBUbyi4vLxl3QSKRYA9AfetarQaz2Qze3t4gnU6TYLvdTpwrlQrRLy4utupAr9fjBrBroKQsl8vEGSUcStaffJPJ5M5KyFRlBYj65uYGUD1QKBS4F+h0OohEInh5/7XlcgmZTAb0ej3ZFaenpzCfz7kBHNPJUANyu92kCI1GI27d8BhDu8DlcsHd3R33dsz7eYBXgEOTZTOxgsEg7SV+v3+n794k5AKAav5kMsEaqohisfh3AA5YLjJKpRLWisXi3qLD9JwzgMfjwRq1Df87gFKphHq9jovXrwHsO5Ru6oFAAHdKn8/HDwA6MaEZnR94+QT9fh/Pz8/P/ACw+Q/wB/AHwAjAdzf8BhzwU5PzE5t1AAAAAElFTkSuQmCC"
+      rel="icon"
+      type="image/png"
+    />
+    <title>sequel fumpt</title>
+    <style>
+      :root {
+        --primary: #6200ee;
+        --variant: #3700b3;
+        --secondary: #03dac6;
+        --secondary-variant: #018786;
+        --background: #ffffff;
+        --surface: #ffffff;
+        --error: #b00020;
+        --on-primary: #ffffff;
+        --on-secondary: #000000;
+        --on-background: #000000;
+        --on-surface: #000000;
+        --on-error: #ffffff;
+        --dp00: #ffffff;
+        --dp01: #f2f2f2;
+        --dp02: #ededed;
+        --dp03: #ebebeb;
+        --dp04: #e8e8e8;
+        --dp06: #e3e3e3;
+        --dp08: #e0e0e0;
+        --dp12: #dbdbdb;
+        --dp16: #d9d9d9;
+        --dp24: #d6d6d6;
+        --emph-high: #212121;
+        --emph-medium: #666666;
+        --disabled: #9e9e9e;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --primary: #bb86fc;
+          --variant: #3700b3;
+          --secondary: #03dac6;
+          --secondary-variant: #03dac6;
+          --background: #121212;
+          --surface: #121212;
+          --error: #cf6679;
+          --on-primary: #000000;
+          --on-secondary: #000000;
+          --on-background: #ffffff;
+          --on-surface: #ffffff;
+          --on-error: #000000;
+          --dp00: #121212;
+          --dp01: #1e1e1e;
+          --dp02: #232323;
+          --dp03: #252525;
+          --dp04: #272727;
+          --dp06: #2c2c2c;
+          --dp08: #2e2e2e;
+          --dp12: #333333;
+          --dp16: #363636;
+          --dp24: #383838;
+          --emph-high: #e0e0e0;
+          --emph-medium: #a0a0a0;
+          --disabled: #6c6c6c;
+        }
+      }
+      body {
+        color: var(--emph-high);
+        background-color: var(--background);
+      }
+    </style>
+    <style>
+      body {
+        margin: 0;
+        padding: 8px;
+        font-size: 1rem;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text",
+          "Segoe UI", "Meiryo", system-ui, ui-sans-serif, Helvetica, Arial,
+          sans-serif;
+      }
+      input {
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        overflow-x: hidden;
+      }
+      a {
+        color: var(--primary);
+      }
+      .full-width {
+        margin: 10px -9999rem;
+        padding: 0 9999rem;
+        background: var(--dp04);
+      }
+      .jsonly {
+        display: none;
+      }
+      textarea {
+        color: var(--emph-high);
+        background: var(--surface);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>sequel fumpt</h1>
+    <p>Type some SQL. Move the slider to set output width.</p>
+    <form name="theform">
+      <div style="display: flex; flex-wrap: wrap">
+        <div style="flex: 1; margin-right: 4px">
+          <textarea
+            id="sql"
+            name="sql"
+            spellcheck="false"
+            style="box-sizing: border-box; width: 100%; height: 200px"
+            onChange="range()"
+            onInput="range()"
+          ></textarea>
+          <input
+            type="range"
+            min="1"
+            max="200"
+            step="1"
+            name="n"
+            value="40"
+            onChange="range()"
+            onInput="range()"
+            id="n"
+            style="width: 100%"
+          />
+        </div>
+        <div style="width: 150px">
+          <h4 style="margin: 0">options:</h4>
+          <span class="jsonly"
+            ><br /><button type="button" onClick="resetVals()" id="reset">
+              reset to defaults
+            </button></span
+          >
+          <span class="jsonly"
+            ><br /><button type="button" onClick="clearSQL()" id="clear">
+              clear
+            </button></span
+          >
+          <span class="jsonly"
+            ><br /><input
+              type="checkbox"
+              onChange="autoPaste()"
+              onInput="autoPaste()"
+              name="paste"
+              id="paste"
+            /><label for="paste" title="pastes from clipboard on load"
+              >auto paste</label
+            ></span
+          >
+        </div>
+      </div>
+      target line width: <span id="nval"></span>, actual width:
+      <span id="actual_width"></span> (num bytes:
+      <span id="actual_bytes"></span>) <br /><input
+        type="submit"
+        id="submitButton"
+      />
+    </form>
+    <span class="jsonly"
+      ><button id="copy">copy to clipboard</button>
+      <a href="" id="share">share</a></span
+    >
+    <div class="full-width">
+      <pre id="fmt" style="padding: 5px 0; overflow-x: auto"></pre>
+    </div>
+    <span>wasm edition.</span>
+    <a href="https://github.com/mjibson/sqlfmt">github</a>
+    <script>
+      const textCopy = document.getElementById("text-copy");
+      const actualWidth = document.getElementById("actual_width");
+      const actualBytes = document.getElementById("actual_bytes");
+      const n = document.getElementById("n");
+      const fmt = document.getElementById("fmt");
+      const sqlEl = document.getElementById("sql");
+      const share = document.getElementById("share");
+      const reset = document.getElementById("reset");
+      const pasteEl = document.getElementById("paste");
+      document.getElementById("submitButton").style.display = "none";
+      Object.values(document.getElementsByClassName("jsonly")).forEach(
+        (v) => (v.style.display = "inline")
+      );
+      let fmtText;
+      document.getElementById("copy").addEventListener("click", (ev) => {
+        copyTextToClipboard(fmtText);
+      });
+      function resetVals() {
+        localStorage.clear();
+        reloadVals();
+        range();
+      }
+      function clearSQL() {
+        sqlEl.value = "";
+        range();
+      }
+      // https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
+      function copyTextToClipboard(text) {
+        const textArea = document.createElement("textarea");
+        // Place in top-left corner of screen regardless of scroll position.
+        textArea.style.position = "fixed";
+        textArea.style.top = 0;
+        textArea.style.left = 0;
+        // Ensure it has a small width and height. Setting to 1px / 1em
+        // doesn't work as this gives a negative w/h on some browsers.
+        textArea.style.width = "2em";
+        textArea.style.height = "2em";
+        // We don't need padding, reducing the size if it does flash render.
+        textArea.style.padding = 0;
+        // Clean up any borders.
+        textArea.style.border = "none";
+        textArea.style.outline = "none";
+        textArea.style.boxShadow = "none";
+        // Avoid flash of white box if rendered for any reason.
+        textArea.style.background = "transparent";
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand("copy");
+        } catch (err) {
+          console.log(err);
+        }
+        document.body.removeChild(textArea);
+      }
+      function range() {
+        if (!globalThis.FromSQL) {
+          console.log("waiting for FromSQL");
+          setTimeout(range, 100);
+          return;
+        }
+        const v = parseInt(n.value);
+        document.getElementById("nval").innerText = v;
+        const sql = sqlEl.value;
+        localStorage.setItem("sql", sql);
+        localStorage.setItem("n", v);
+        share.href =
+          "/?n=" + v + "&sql=" + encodeURIComponent(b64EncodeUnicode(sql));
+
+        try {
+          fmtText = FmtSQL(sql, v);
+          actualWidth.innerText = Math.max(
+            ...fmtText.split("\n").map((v) => v.length)
+          );
+          actualBytes.innerText = fmtText.length;
+          hLine = "--";
+          if (v > 2) {
+            hLine = hLine + "-".repeat(v - 2);
+          }
+          fmt.innerText = hLine + "\n\n" + fmtText;
+        } catch (e) {
+          fmt.innerText = e;
+          actualWidth.innerText = "";
+          actualBytes.innerText = "";
+        }
+      }
+      function b64EncodeUnicode(str) {
+        // first we use encodeURIComponent to get percent-encoded UTF-8,
+        // then we convert the percent encodings into raw bytes which
+        // can be fed into btoa.
+        return btoa(
+          encodeURIComponent(str).replace(
+            /%([0-9A-F]{2})/g,
+            function toSolidBytes(match, p1) {
+              return String.fromCharCode("0x" + p1);
+            }
+          )
+        );
+      }
+      function b64DecodeUnicode(str) {
+        // Going backwards: from bytestream, to percent-encoding, to original string.
+        return decodeURIComponent(
+          atob(str)
+            .split("")
+            .map(function (c) {
+              return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+            })
+            .join("")
+        );
+      }
+      let search;
+      if (location.search) {
+        search = new URLSearchParams(location.search);
+      }
+      function reloadVals() {
+        // Load initial defaults from storage.
+        let sql = localStorage.getItem("sql");
+        let nVal = localStorage.getItem("n");
+        // Load predefined defaults, for each value that didn't have a default in storage.
+        if (sql === null) {
+          sql = `CREATE MATERIALIZED VIEW user_join AS SELECT u.id, SUM(p.amount), last_login FROM users
+  JOIN purchases p ON p.user_id=u.id
+  LEFT JOIN (SELECT user_id, MAX(ts) as last_login FROM logins GROUP BY 1) lg ON lg.user_id=u.id
+  GROUP BY u.id;
+
+SELECT
+  'user_' || 24::TEXT as user_id,
+  '{"key":"value"}'::jsonb->>'key',
+  date_trunc('hour', now()),
+  COUNT(t), MAX(t), AVG(t), SUM(t), STDDEV(t)
+FROM my_source
+GROUP BY 1,2,3;`;
+        }
+        if (nVal === null) {
+          nVal = 60;
+        }
+        // Override any value from the URL.
+        if (search) {
+          if (search.has("sql")) {
+            sql = b64DecodeUnicode(search.get("sql"));
+          }
+          if (search.has("n")) {
+            nVal = search.get("n");
+          }
+        }
+        // Populate the form.
+        sqlEl.value = sql;
+        n.value = nVal;
+      }
+      reloadVals();
+      pasteEl.checked = localStorage.getItem("paste") === "1";
+      function autoPaste() {
+        const p = pasteEl.checked ? 1 : 0;
+        localStorage.setItem("paste", p);
+        if (p) {
+          navigator.clipboard.readText().then((clipText) => {
+            sqlEl.value = clipText;
+            range();
+          });
+        }
+      }
+      if (!search || !search.has("sql")) {
+        autoPaste();
+      }
+      (() => {
+        if (location.search) {
+          const clearSearch = () => {
+            window.history.replaceState(null, "", "/");
+            sqlEl.onkeydown = null;
+            n.oninput = n.onchange = range;
+            reset.onclick = resetVals;
+          };
+          sqlEl.onkeydown = clearSearch;
+          n.oninput = n.onchange = () => {
+            clearSearch();
+            range();
+          };
+          reset.onclick = () => {
+            clearSearch();
+            resetVals();
+          };
+        }
+      })();
+      range();
+    </script>
+  </body>
+</html>

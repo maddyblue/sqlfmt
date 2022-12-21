@@ -2,4 +2,4 @@
 
 export GOOS=js
 export GOARCH=wasm
-go build -o web/sqlfmt.wasm -v
+go build -o ../docs/sqlfmt.wasm -v

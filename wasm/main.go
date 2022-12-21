@@ -14,12 +14,14 @@ func main() {
 
 func FmtSQL() js.Func {
 	jsonFunc := js.FuncOf(func(this js.Value, args []js.Value) any {
-		if len(args) != 1 {
+		if len(args) != 2 {
 			return "Invalid no of arguments passed"
 		}
 		input := args[0].String()
+		width := args[1].Int()
 
 		cfg := tree.DefaultPrettyCfg()
+		cfg.LineWidth = width
 		pretty, err := sqlfmt.FmtSQL(cfg, []string{input})
 		if err != nil {
 			return err.Error()
