@@ -44,8 +44,8 @@ github.com/cncf/xds/go v0.0.0-20211001041855-01bcc9b48dfe/go.mod h1:eXthEFrGJvWH
 github.com/cncf/xds/go v0.0.0-20211011173535-cb28da3451f1/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
 github.com/cockroachdb/apd/v3 v3.1.0 h1:MK3Ow7LH0W8zkd5GMKA1PvS9qG3bWFI95WaVNfyZJ/w=
 github.com/cockroachdb/apd/v3 v3.1.0/go.mod h1:6qgPBMXjATAdD/VefbRP9NoSLKjbB4LCoA7gN4LpHs4=
-github.com/cockroachdb/cockroachdb-parser v0.0.0-20221028200933-9747fdca0317 h1:za4rdr+BcKpyrjNagWBLjwhxvkNY9tmPCB56DATTxSY=
-github.com/cockroachdb/cockroachdb-parser v0.0.0-20221028200933-9747fdca0317/go.mod h1:xfSU5qFpqIxEicpm/yRZc6Xz50/OrBEnrkPhU2vhNi8=
+github.com/cockroachdb/cockroachdb-parser v0.0.0-20221207165326-ea0ac1a4778b h1:o4bq379Y+BxcGWyof56Wc2jMnqrUavvG17QVhITERBY=
+github.com/cockroachdb/cockroachdb-parser v0.0.0-20221207165326-ea0ac1a4778b/go.mod h1:xfSU5qFpqIxEicpm/yRZc6Xz50/OrBEnrkPhU2vhNi8=
 github.com/cockroachdb/datadriven v1.0.1-0.20211007161720-b558070c3be0/go.mod h1:5Ib8Meh+jk1RlHIXej6Pzevx/NLlNvQB9pmSBZErGA4=
 github.com/cockroachdb/datadriven v1.0.1-0.20220214170620-9913f5bc19b7/go.mod h1:hi0MtSY3AYDQNDi83kDkMH5/yqM/CsIrsOITkSoH7KI=
 github.com/cockroachdb/errors v1.6.1/go.mod h1:tm6FTP5G81vwJ5lC0SizQo374JNCOPrHyXGitRJoDqM=

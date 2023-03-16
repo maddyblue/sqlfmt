@@ -3,7 +3,7 @@ module github.com/mjibson/sqlfmt
 go 1.19
 
 require (
-	github.com/cockroachdb/cockroachdb-parser v0.0.0-20221028200933-9747fdca0317
+	github.com/cockroachdb/cockroachdb-parser v0.0.0-20221207165326-ea0ac1a4778b
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8
